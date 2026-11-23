@@ -1,0 +1,6 @@
+{
+  "name": "Hamro Education",
+  "description": "Nepal-first, globally scalable Digital Learning Ecosystem with country-aware curriculum hierarchy, PostgreSQL relational architecture, and server-side RBAC.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
