@@ -385,6 +385,27 @@ export async function toggleCommunityVote(params: {
   targetId: number;
 }) {
   await ensureSeeded();
+
+  if (params.targetType === 'post') {
+    const [post] = await db
+      .select({ id: discussionPosts.id, moderationStatus: discussionPosts.moderationStatus })
+      .from(discussionPosts)
+      .where(eq(discussionPosts.id, params.targetId))
+      .limit(1);
+    if (!post || post.moderationStatus === 'hidden') {
+      throw new Error('Target discussion post was not found.');
+    }
+  } else {
+    const [comment] = await db
+      .select({ id: discussionComments.id, moderationStatus: discussionComments.moderationStatus })
+      .from(discussionComments)
+      .where(eq(discussionComments.id, params.targetId))
+      .limit(1);
+    if (!comment || comment.moderationStatus === 'hidden') {
+      throw new Error('Target reply was not found.');
+    }
+  }
+
   const targetKey = `${params.targetType}:${params.targetId}`;
 
   const [existing] = await db
@@ -497,7 +518,24 @@ export async function submitCommunityReport(params: {
       .select()
       .from(discussionPosts)
       .where(eq(discussionPosts.id, params.targetId));
-    if (!post) throw new Error('Target post not found.');
+    if (!post || post.moderationStatus === 'hidden') throw new Error('Target post not found.');
+
+    const existingOpen = await db
+      .select({ id: reports.id })
+      .from(reports)
+      .where(
+        and(
+          eq(reports.reporterId, params.reporterId),
+          eq(reports.targetType, 'post'),
+          eq(reports.postId, params.targetId),
+          eq(reports.status, 'open'),
+        ),
+      )
+      .limit(1);
+    if (existingOpen[0]) {
+      throw new Error('You have already submitted an open report for this post.');
+    }
+
     if (post.moderationStatus === 'active') {
       await db
         .update(discussionPosts)
@@ -509,7 +547,26 @@ export async function submitCommunityReport(params: {
       .select()
       .from(discussionComments)
       .where(eq(discussionComments.id, params.targetId));
-    if (!comment) throw new Error('Target reply not found.');
+    if (!comment || comment.moderationStatus === 'hidden') {
+      throw new Error('Target reply not found.');
+    }
+
+    const existingOpen = await db
+      .select({ id: reports.id })
+      .from(reports)
+      .where(
+        and(
+          eq(reports.reporterId, params.reporterId),
+          eq(reports.targetType, 'comment'),
+          eq(reports.commentId, params.targetId),
+          eq(reports.status, 'open'),
+        ),
+      )
+      .limit(1);
+    if (existingOpen[0]) {
+      throw new Error('You have already submitted an open report for this reply.');
+    }
+
     if (comment.moderationStatus === 'active') {
       await db
         .update(discussionComments)

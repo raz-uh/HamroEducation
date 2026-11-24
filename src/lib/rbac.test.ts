@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   ROLE_CATALOG,
   canAssignRole,
+  canManageTargetUserAccount,
+  canRevokeRole,
   hasAnyRole,
   hasPermission,
   isValidEmail,
@@ -126,3 +128,138 @@ test('password and email validators reject weak credentials', () => {
   assert.equal(isValidEmail('student@hamro.edu.np'), true);
   assert.equal(isValidEmail('invalid-email'), false);
 });
+
+test('canRevokeRole enforces super-admin protection and institutional tenant boundaries', () => {
+  assert.equal(
+    canRevokeRole({
+      actorRoles: ['administrator'],
+      targetRoleSlug: 'super_administrator',
+      actorInstitutionIds: [],
+      targetInstitutionId: null,
+    }).allowed,
+    false,
+  );
+
+  assert.equal(
+    canRevokeRole({
+      actorRoles: ['super_administrator'],
+      targetRoleSlug: 'super_administrator',
+      actorInstitutionIds: [],
+      targetInstitutionId: null,
+    }).allowed,
+    true,
+  );
+
+  assert.equal(
+    canRevokeRole({
+      actorRoles: ['institutional_administrator'],
+      targetRoleSlug: 'teacher',
+      actorInstitutionIds: [12],
+      targetInstitutionId: 12,
+    }).allowed,
+    true,
+  );
+
+  assert.equal(
+    canRevokeRole({
+      actorRoles: ['institutional_administrator'],
+      targetRoleSlug: 'teacher',
+      actorInstitutionIds: [12],
+      targetInstitutionId: 99,
+    }).allowed,
+    false,
+  );
+
+  assert.equal(
+    canRevokeRole({
+      actorRoles: ['institutional_administrator'],
+      targetRoleSlug: 'administrator',
+      actorInstitutionIds: [12],
+      targetInstitutionId: 12,
+    }).allowed,
+    false,
+  );
+});
+
+test('canManageTargetUserAccount enforces moderator, institutional admin, and super-admin safeguards', () => {
+  // Administrator cannot suspend Super Administrator
+  assert.equal(
+    canManageTargetUserAccount({
+      actorRoles: ['administrator'],
+      actorInstitutionIds: [],
+      targetRoles: ['super_administrator'],
+      targetInstitutionId: null,
+      requestedStatus: 'suspended',
+    }).allowed,
+    false,
+  );
+
+  // Moderator can suspend student accounts, but not staff or profile fields
+  assert.equal(
+    canManageTargetUserAccount({
+      actorRoles: ['moderator'],
+      actorInstitutionIds: [],
+      targetRoles: ['registered_student'],
+      targetInstitutionId: null,
+      requestedStatus: 'suspended',
+    }).allowed,
+    true,
+  );
+
+  assert.equal(
+    canManageTargetUserAccount({
+      actorRoles: ['moderator'],
+      actorInstitutionIds: [],
+      targetRoles: ['teacher'],
+      targetInstitutionId: 5,
+      requestedStatus: 'suspended',
+    }).allowed,
+    false,
+  );
+
+  assert.equal(
+    canManageTargetUserAccount({
+      actorRoles: ['moderator'],
+      actorInstitutionIds: [],
+      targetRoles: ['registered_student'],
+      targetInstitutionId: null,
+      requestedFullName: 'Tampered Name',
+    }).allowed,
+    false,
+  );
+
+  // Institutional admin can only manage users within their institution and without higher roles
+  assert.equal(
+    canManageTargetUserAccount({
+      actorRoles: ['institutional_administrator'],
+      actorInstitutionIds: [7],
+      targetRoles: ['teacher'],
+      targetInstitutionId: 7,
+      requestedStatus: 'suspended',
+    }).allowed,
+    true,
+  );
+
+  assert.equal(
+    canManageTargetUserAccount({
+      actorRoles: ['institutional_administrator'],
+      actorInstitutionIds: [7],
+      targetRoles: ['teacher'],
+      targetInstitutionId: 8,
+      requestedStatus: 'suspended',
+    }).allowed,
+    false,
+  );
+
+  assert.equal(
+    canManageTargetUserAccount({
+      actorRoles: ['institutional_administrator'],
+      actorInstitutionIds: [7],
+      targetRoles: ['examination_manager'],
+      targetInstitutionId: 7,
+      requestedStatus: 'suspended',
+    }).allowed,
+    false,
+  );
+});
+

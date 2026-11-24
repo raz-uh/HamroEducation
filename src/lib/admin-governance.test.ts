@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  CSV_IMPORT_MAX_CHARS,
+  CSV_IMPORT_MAX_DATA_ROWS,
   detectDuplicateQuestions,
   EDITORIAL_LIFECYCLE_STAGES,
   getAllowedAdminModules,
@@ -8,6 +10,7 @@ import {
   normalizeLifecycleStage,
   parseQuestionImportCsv,
   validateEditorialTransition,
+  validateSafeSvgMarkup,
 } from './admin-governance.ts';
 
 test('EDITORIAL_LIFECYCLE_STAGES covers all 6 Section 14.3 stages and normalizes legacy values', () => {
@@ -138,3 +141,58 @@ test('getAllowedAdminModules enforces strict RBAC module visibility across roles
   assert.equal(NEPAL_PLATFORM_DEFAULTS.countryCode, 'NP');
   assert.equal(NEPAL_PLATFORM_DEFAULTS.timezone, 'Asia/Kathmandu');
 });
+
+test('parseQuestionImportCsv enforces row/byte limits and strict true_false answers', () => {
+  const header =
+    'examination,subject,chapter,topic,question_type,difficulty,prompt,option_a,option_b,option_c,option_d,correct_answer,explanation,marks,negative_marks,source';
+
+  // Exceeds CSV_IMPORT_MAX_DATA_ROWS
+  const tooManyRows = [
+    header,
+    ...Array.from({ length: CSV_IMPORT_MAX_DATA_ROWS + 1 }, (_, i) =>
+      `SEE,Science,Physics,Motion,true_false,easy,"Statement number ${i + 1} is valid.",,,,,true,Verified,1,0,Nepal CDC`,
+    ),
+  ].join('\n');
+  const rowLimitRes = parseQuestionImportCsv(tooManyRows);
+  assert.equal(rowLimitRes.validRows.length, 0);
+  assert.match(rowLimitRes.errors[0].message, /maximum/i);
+
+  // Exceeds CSV_IMPORT_MAX_CHARS
+  const oversizedRes = parseQuestionImportCsv('x'.repeat(CSV_IMPORT_MAX_CHARS + 10));
+  assert.equal(oversizedRes.validRows.length, 0);
+  assert.match(oversizedRes.errors[0].message, /limit/i);
+
+  // Invalid boolean value in true_false row is rejected instead of silently treated as false
+  const badBoolCsv = [
+    header,
+    'SEE,Science,Physics,Motion,true_false,easy,"Earth orbits the Sun.",,,,,maybe,Verified,1,0,Nepal CDC',
+  ].join('\n');
+  const badBoolRes = parseQuestionImportCsv(badBoolCsv);
+  assert.equal(badBoolRes.validRows.length, 0);
+  assert.equal(badBoolRes.errors.length, 1);
+  assert.match(badBoolRes.errors[0].message, /true\/false/i);
+});
+
+test('validateSafeSvgMarkup blocks script, foreignObject, and event handlers while allowing clean SVG', () => {
+  assert.equal(
+    validateSafeSvgMarkup('<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="20" /></svg>').valid,
+    true,
+  );
+  assert.equal(
+    validateSafeSvgMarkup('<svg><script>alert(1)</script></svg>').valid,
+    false,
+  );
+  assert.equal(
+    validateSafeSvgMarkup('<svg onload="alert(1)"><rect width="10" height="10" /></svg>').valid,
+    false,
+  );
+  assert.equal(
+    validateSafeSvgMarkup('<svg><foreignObject><div>xss</div></foreignObject></svg>').valid,
+    false,
+  );
+  assert.equal(
+    validateSafeSvgMarkup('<svg><a href="javascript:alert(1)">click</a></svg>').valid,
+    false,
+  );
+});
+

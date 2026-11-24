@@ -306,6 +306,160 @@ export function canAssignRole(input: RoleAssignmentCheckInput): {
   };
 }
 
+export function getHighestRoleTier(roleSlugs: string[]): number {
+  let highest = 0;
+  for (const slug of roleSlugs) {
+    const found = ROLE_CATALOG.find((r) => r.slug === slug);
+    if (found && found.hierarchyTier > highest) {
+      highest = found.hierarchyTier;
+    }
+  }
+  return highest;
+}
+
+export function canRevokeRole(input: RoleAssignmentCheckInput): {
+  allowed: boolean;
+  reason?: string;
+} {
+  const { actorRoles, targetRoleSlug, actorInstitutionIds, targetInstitutionId } = input;
+
+  if (actorRoles.includes('super_administrator')) {
+    return { allowed: true };
+  }
+
+  if (actorRoles.includes('administrator')) {
+    if (targetRoleSlug === 'super_administrator') {
+      return {
+        allowed: false,
+        reason: 'Only a Super Administrator can revoke another Super Administrator.',
+      };
+    }
+    return { allowed: true };
+  }
+
+  if (actorRoles.includes('institutional_administrator')) {
+    if (!INSTITUTION_ASSIGNABLE_ROLES.includes(targetRoleSlug as RoleSlug)) {
+      return {
+        allowed: false,
+        reason: 'Institutional Administrators can only revoke student, teacher, reviewer, or content roles.',
+      };
+    }
+    if (!targetInstitutionId || !actorInstitutionIds.includes(targetInstitutionId)) {
+      return {
+        allowed: false,
+        reason: 'Institutional Administrators can only revoke roles belonging to their own verified institution.',
+      };
+    }
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: 'Requires Administrator, Super Administrator, or scoped Institutional Administrator role.',
+  };
+}
+
+export interface UserAccountGovernanceCheckInput {
+  actorRoles: string[];
+  actorInstitutionIds: number[];
+  targetRoles: string[];
+  targetInstitutionId: number | null;
+  requestedStatus?: 'active' | 'suspended';
+  requestedInstitutionId?: number | null;
+  requestedFullName?: string;
+}
+
+export function canManageTargetUserAccount(
+  input: UserAccountGovernanceCheckInput,
+): { allowed: boolean; reason?: string } {
+  const {
+    actorRoles,
+    actorInstitutionIds,
+    targetRoles,
+    targetInstitutionId,
+    requestedStatus,
+    requestedInstitutionId,
+    requestedFullName,
+  } = input;
+
+  if (actorRoles.includes('super_administrator')) {
+    return { allowed: true };
+  }
+
+  if (actorRoles.includes('administrator')) {
+    if (targetRoles.includes('super_administrator')) {
+      return {
+        allowed: false,
+        reason: 'Only a Super Administrator can modify or suspend a Super Administrator account.',
+      };
+    }
+    return { allowed: true };
+  }
+
+  if (actorRoles.includes('institutional_administrator')) {
+    const hasProtectedTargetRole = targetRoles.some(
+      (slug) => !INSTITUTION_ASSIGNABLE_ROLES.includes(slug as RoleSlug),
+    );
+    if (hasProtectedTargetRole) {
+      return {
+        allowed: false,
+        reason: 'Institutional Administrators cannot modify platform administrators, moderators, or exam managers.',
+      };
+    }
+
+    const inActorInstitution =
+      targetInstitutionId !== null && actorInstitutionIds.includes(targetInstitutionId);
+    const onboardingToActorInstitution =
+      targetInstitutionId === null &&
+      typeof requestedInstitutionId === 'number' &&
+      actorInstitutionIds.includes(requestedInstitutionId);
+
+    if (!inActorInstitution && !onboardingToActorInstitution) {
+      return {
+        allowed: false,
+        reason: 'Institutional Administrators can only manage accounts affiliated with their own institution.',
+      };
+    }
+
+    if (
+      requestedInstitutionId !== undefined &&
+      requestedInstitutionId !== null &&
+      !actorInstitutionIds.includes(requestedInstitutionId)
+    ) {
+      return {
+        allowed: false,
+        reason: 'Institutional Administrators cannot reassign users to another institution.',
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  if (actorRoles.includes('moderator')) {
+    if (requestedInstitutionId !== undefined || requestedFullName !== undefined) {
+      return {
+        allowed: false,
+        reason: 'Moderators cannot change institutional affiliations or profile names.',
+      };
+    }
+    const targetIsStaffOrAdmin = targetRoles.some(
+      (slug) => slug !== 'registered_student' && slug !== 'guest',
+    );
+    if (targetIsStaffOrAdmin || requestedStatus === undefined) {
+      return {
+        allowed: false,
+        reason: 'Moderators may only suspend or reactivate student accounts.',
+      };
+    }
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: 'Insufficient governance privileges to modify user accounts.',
+  };
+}
+
 export function isValidPasswordStrength(password: string): {
   valid: boolean;
   reason?: string;

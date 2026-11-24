@@ -329,15 +329,69 @@ export interface ParsedCsvQuestionRow {
   source: string;
 }
 
+export const CSV_IMPORT_MAX_CHARS = 150_000;
+export const CSV_IMPORT_MAX_DATA_ROWS = 200;
+
+export function validateSafeSvgMarkup(svg: string | null | undefined): {
+  valid: boolean;
+  reason?: string;
+} {
+  if (svg === null || svg === undefined) return { valid: true };
+  if (typeof svg !== 'string') {
+    return { valid: false, reason: 'diagramSvg must be a string.' };
+  }
+  const trimmed = svg.trim();
+  if (!trimmed) return { valid: true };
+  if (trimmed.length > 40_000) {
+    return { valid: false, reason: 'diagramSvg exceeds 40 KB limit.' };
+  }
+  if (!/<svg[\s>]/i.test(trimmed)) {
+    return { valid: false, reason: 'diagramSvg must contain an <svg> root element.' };
+  }
+  if (
+    /<script\b|<foreignObject\b|\bon[a-z]+\s*=|javascript:|data:text\/html/i.test(trimmed)
+  ) {
+    return {
+      valid: false,
+      reason: 'diagramSvg contains disallowed script or event-handler markup.',
+    };
+  }
+  return { valid: true };
+}
+
 export function parseQuestionImportCsv(csvText: string): {
   validRows: ParsedCsvQuestionRow[];
   errors: Array<{ rowNumber: number; message: string }>;
 } {
+  if (typeof csvText !== 'string' || csvText.length > CSV_IMPORT_MAX_CHARS) {
+    return {
+      validRows: [],
+      errors: [
+        {
+          rowNumber: 1,
+          message: `CSV payload exceeds the ${Math.round(CSV_IMPORT_MAX_CHARS / 1000)} KB batch limit.`,
+        },
+      ],
+    };
+  }
+
   const matrix = parseCsvMatrix(csvText);
   if (matrix.length < 2) {
     return {
       validRows: [],
       errors: [{ rowNumber: 1, message: 'CSV must include a header row and at least one question row.' }],
+    };
+  }
+
+  if (matrix.length - 1 > CSV_IMPORT_MAX_DATA_ROWS) {
+    return {
+      validRows: [],
+      errors: [
+        {
+          rowNumber: 1,
+          message: `CSV batch exceeds the maximum of ${CSV_IMPORT_MAX_DATA_ROWS} question rows per import.`,
+        },
+      ],
     };
   }
 
@@ -385,15 +439,15 @@ export function parseQuestionImportCsv(csvText: string): {
     const rowNumber = r + 1;
     const get = (col: number) => (col >= 0 && col < row.length ? row[col].trim() : '');
 
-    const subjectName = get(iSubject);
-    const prompt = get(iPrompt);
-    const rawAns = get(iAns);
-    const explanation = get(iExp) || 'Verified syllabus solution pending detailed review.';
-    const examination = get(iExam) || 'SEE';
-    const academicLevel = get(iLevel) || 'Secondary & Higher Secondary';
-    const chapterName = get(iChapter) || 'Core Chapter';
-    const topicName = get(iTopic) || 'Core Topic';
-    const source = get(iSource) || 'Faculty CSV Import';
+    const subjectName = get(iSubject).slice(0, 120);
+    const prompt = get(iPrompt).slice(0, 2000);
+    const rawAns = get(iAns).slice(0, 120);
+    const explanation = (get(iExp) || 'Verified syllabus solution pending detailed review.').slice(0, 3000);
+    const examination = (get(iExam) || 'SEE').slice(0, 80);
+    const academicLevel = (get(iLevel) || 'Secondary & Higher Secondary').slice(0, 80);
+    const chapterName = (get(iChapter) || 'Core Chapter').slice(0, 160);
+    const topicName = (get(iTopic) || 'Core Topic').slice(0, 160);
+    const source = (get(iSource) || 'Faculty CSV Import').slice(0, 160);
 
     if (subjectName.length < 2 || prompt.length < 5 || !rawAns) {
       errors.push({
@@ -414,9 +468,10 @@ export function parseQuestionImportCsv(csvText: string): {
       rawDiff === 'easy' || rawDiff === 'hard' ? rawDiff : 'medium';
 
     const marksParsed = Number(get(iMarks));
-    const marks = Number.isFinite(marksParsed) && marksParsed > 0 ? marksParsed : 1;
+    const marks = Number.isFinite(marksParsed) && marksParsed > 0 ? Math.min(100, marksParsed) : 1;
     const negParsed = Number(get(iNeg));
-    const negativeMarks = Number.isFinite(negParsed) && negParsed >= 0 ? negParsed : 0;
+    const negativeMarks =
+      Number.isFinite(negParsed) && negParsed >= 0 ? Math.min(50, negParsed) : 0;
 
     if (questionType === 'numerical') {
       const numericValue = Number(rawAns);
@@ -445,7 +500,15 @@ export function parseQuestionImportCsv(csvText: string): {
     }
 
     if (questionType === 'true_false') {
-      const boolVal = rawAns.toLowerCase() === 'true' || rawAns.toLowerCase() === 't';
+      const normalizedBool = rawAns.toLowerCase();
+      if (!['true', 't', 'false', 'f'].includes(normalizedBool)) {
+        errors.push({
+          rowNumber,
+          message: 'True/False question requires true/false (or T/F) in correct_answer.',
+        });
+        continue;
+      }
+      const boolVal = normalizedBool === 'true' || normalizedBool === 't';
       validRows.push({
         rowNumber,
         academicLevel,
@@ -467,10 +530,10 @@ export function parseQuestionImportCsv(csvText: string): {
     }
 
     const optPairs = [
-      { key: 'A', text: get(iOptA) },
-      { key: 'B', text: get(iOptB) },
-      { key: 'C', text: get(iOptC) },
-      { key: 'D', text: get(iOptD) },
+      { key: 'A', text: get(iOptA).slice(0, 500) },
+      { key: 'B', text: get(iOptB).slice(0, 500) },
+      { key: 'C', text: get(iOptC).slice(0, 500) },
+      { key: 'D', text: get(iOptD).slice(0, 500) },
     ].filter((o) => o.text.length > 0);
 
     if (optPairs.length < 2) {

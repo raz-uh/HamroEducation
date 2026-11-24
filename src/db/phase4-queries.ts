@@ -35,6 +35,10 @@ import {
   shuffleDeterministic,
   type SubmittedAnswerPayload,
 } from '../lib/exam-engine.ts';
+import {
+  normalizeLifecycleStage,
+  validateEditorialTransition,
+} from '../lib/admin-governance.ts';
 import { recordExamSubmissionToPhase5 } from './phase5-queries.ts';
 
 export async function resolveExamByIdentifier(examIdentifier: string) {
@@ -442,6 +446,8 @@ export async function transitionQuestionStatus(params: {
   nextStatus: QuestionWorkflowStatus;
   actorId: number;
   actorName: string;
+  actorRoles?: string[];
+  actorPermissions?: string[];
   updatedPrompt?: string;
   updatedExplanation?: string;
 }) {
@@ -452,6 +458,38 @@ export async function transitionQuestionStatus(params: {
     .where(eq(questions.id, params.questionId))
     .limit(1);
   if (!existing) return null;
+
+  const nextStage = normalizeLifecycleStage(params.nextStatus);
+  const actorPerms = params.actorPermissions ?? [];
+  const actorRoles = params.actorRoles ?? [];
+  let resolvedSource = (existing.source ?? '').trim();
+
+  if (
+    existing.aiGenerated &&
+    nextStage === 'Published' &&
+    resolvedSource === 'AI-Generated — Pending Academic Review' &&
+    (actorPerms.includes('curriculum:review') || actorPerms.includes('system:admin'))
+  ) {
+    resolvedSource = `AI-Assisted — Academic Reviewer Verified (${params.actorName})`;
+  }
+
+  const check = validateEditorialTransition({
+    currentStatus: existing.status,
+    nextStage,
+    aiGenerated: existing.aiGenerated,
+    hasVerifiedSource:
+      resolvedSource.length >= 3 &&
+      !resolvedSource.toLowerCase().includes('unverified') &&
+      (!existing.aiGenerated ||
+        nextStage !== 'Published' ||
+        resolvedSource !== 'AI-Generated — Pending Academic Review'),
+    userPermissions: actorPerms,
+    userRoles: actorRoles,
+  });
+
+  if (!check.allowed) {
+    throw new Error(check.reason ?? 'Question lifecycle transition not permitted.');
+  }
 
   const nextVersion = existing.version + 1;
   const nextContent: QuestionContentJson = params.updatedPrompt
@@ -465,6 +503,7 @@ export async function transitionQuestionStatus(params: {
       status: params.nextStatus,
       questionContent: nextContent,
       explanation: nextExplanation,
+      source: resolvedSource,
       reviewerId: params.actorId,
       reviewer: params.actorName,
       version: nextVersion,
@@ -495,9 +534,49 @@ async function finalizeAttemptScoring(params: {
   attempt: typeof examAttempts.$inferSelect;
   reason: 'manual' | 'timeout';
   userId: number;
-}) {
+}): Promise<{
+  alreadyFinalized: boolean;
+  result: typeof examResults.$inferSelect | undefined;
+}> {
   const { attempt, reason, userId } = params;
   const snapshot = attempt.immutableSnapshot;
+
+  const now = new Date();
+  const rawElapsedSeconds = Math.round(
+    (now.getTime() - new Date(attempt.startedAt).getTime()) / 1000,
+  );
+  const maxSeconds = snapshot.durationMinutes * 60;
+  const boundedSeconds = Math.max(1, Math.min(rawElapsedSeconds, maxSeconds));
+  const finalAttemptStatus = reason === 'timeout' ? 'auto_submitted' : 'submitted';
+
+  // Atomic claim ensures concurrent submit/timeout calls never double-score or double-credit Phase 5 progress
+  const [claimed] = await db
+    .update(examAttempts)
+    .set({
+      status: finalAttemptStatus,
+      submittedAt: now,
+      timeTakenSeconds: boundedSeconds,
+      updatedAt: now,
+    })
+    .where(and(eq(examAttempts.id, attempt.id), eq(examAttempts.status, 'in_progress')))
+    .returning();
+
+  if (!claimed) {
+    let existingResult: typeof examResults.$inferSelect | undefined;
+    for (let i = 0; i < 6; i += 1) {
+      const rows = await db
+        .select()
+        .from(examResults)
+        .where(eq(examResults.attemptId, attempt.id))
+        .limit(1);
+      if (rows[0]) {
+        existingResult = rows[0];
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 75));
+    }
+    return { alreadyFinalized: true, result: existingResult };
+  }
 
   const savedRows = await db
     .select()
@@ -508,13 +587,6 @@ async function finalizeAttemptScoring(params: {
   for (const row of savedRows) {
     answerMap.set(row.questionId, row.selectedAnswer ?? null);
   }
-
-  const now = new Date();
-  const rawElapsedSeconds = Math.round(
-    (now.getTime() - new Date(attempt.startedAt).getTime()) / 1000,
-  );
-  const maxSeconds = snapshot.durationMinutes * 60;
-  const boundedSeconds = Math.max(1, Math.min(rawElapsedSeconds, maxSeconds));
 
   const graded = gradeAttemptFromSnapshot(snapshot, answerMap, boundedSeconds);
 
@@ -534,46 +606,30 @@ async function finalizeAttemptScoring(params: {
       );
   }
 
-  const finalAttemptStatus = reason === 'timeout' ? 'auto_submitted' : 'submitted';
-
   await db
-    .update(examAttempts)
-    .set({
-      status: finalAttemptStatus,
-      submittedAt: now,
+    .insert(examResults)
+    .values({
+      attemptId: attempt.id,
+      examId: attempt.examId,
+      userId,
+      totalMarks: graded.totalMarks,
+      obtainedMarks: graded.obtainedMarks,
+      correctCount: graded.correctCount,
+      incorrectCount: graded.incorrectCount,
+      unattemptedCount: graded.unattemptedCount,
+      accuracyPercent: graded.accuracyPercent,
       timeTakenSeconds: graded.timeTakenSeconds,
-      updatedAt: now,
+      subjectBreakdown: graded.subjectBreakdown,
+      chapterBreakdown: graded.chapterBreakdown,
+      topicBreakdown: graded.topicBreakdown,
     })
-    .where(eq(examAttempts.id, attempt.id));
+    .onConflictDoNothing({ target: examResults.attemptId });
 
-  const [existingResult] = await db
+  const [resultRow] = await db
     .select()
     .from(examResults)
     .where(eq(examResults.attemptId, attempt.id))
     .limit(1);
-
-  let resultRow = existingResult;
-  if (!resultRow) {
-    const [inserted] = await db
-      .insert(examResults)
-      .values({
-        attemptId: attempt.id,
-        examId: attempt.examId,
-        userId,
-        totalMarks: graded.totalMarks,
-        obtainedMarks: graded.obtainedMarks,
-        correctCount: graded.correctCount,
-        incorrectCount: graded.incorrectCount,
-        unattemptedCount: graded.unattemptedCount,
-        accuracyPercent: graded.accuracyPercent,
-        timeTakenSeconds: graded.timeTakenSeconds,
-        subjectBreakdown: graded.subjectBreakdown,
-        chapterBreakdown: graded.chapterBreakdown,
-        topicBreakdown: graded.topicBreakdown,
-      })
-      .returning();
-    resultRow = inserted;
-  }
 
   await db.insert(attemptEvents).values({
     attemptId: attempt.id,
@@ -594,7 +650,7 @@ async function finalizeAttemptScoring(params: {
     academicLevelByQuestionId: levelMap,
   });
 
-  return resultRow;
+  return { alreadyFinalized: false, result: resultRow };
 }
 
 export async function startOrResumeExamAttempt(params: {
@@ -892,12 +948,12 @@ export async function saveAttemptAnswer(params: {
 
   const now = new Date();
   if (hasAttemptExpired(attempt.expiresAt, now)) {
-    const result = await finalizeAttemptScoring({
+    const finalized = await finalizeAttemptScoring({
       attempt,
       reason: 'timeout',
       userId: params.userId,
     });
-    return { expired: true, result };
+    return { expired: true, result: finalized.result };
   }
 
   const snapQuestion = attempt.immutableSnapshot.questions.find(
@@ -907,7 +963,40 @@ export async function saveAttemptAnswer(params: {
     throw new Error('Question does not belong to this attempt snapshot.');
   }
 
-  const answered = isAnswerProvided(snapQuestion.questionType, params.selectedAnswer);
+  const rawSel = params.selectedAnswer;
+  const boundedAnswer: SubmittedAnswerPayload | null =
+    rawSel && typeof rawSel === 'object'
+      ? {
+          ...(Array.isArray(rawSel.optionKeys)
+            ? {
+                optionKeys: rawSel.optionKeys
+                  .filter((k): k is string => typeof k === 'string')
+                  .map((k) => k.slice(0, 12))
+                  .slice(0, 10),
+              }
+            : {}),
+          ...(typeof rawSel.booleanValue === 'boolean'
+            ? { booleanValue: rawSel.booleanValue }
+            : {}),
+          ...(typeof rawSel.numericValue === 'number' && Number.isFinite(rawSel.numericValue)
+            ? { numericValue: rawSel.numericValue }
+            : {}),
+          ...(typeof rawSel.textValue === 'string'
+            ? { textValue: rawSel.textValue.slice(0, 4000) }
+            : {}),
+          ...(rawSel.matchingMap && typeof rawSel.matchingMap === 'object'
+            ? {
+                matchingMap: Object.fromEntries(
+                  Object.entries(rawSel.matchingMap)
+                    .slice(0, 16)
+                    .map(([k, v]) => [String(k).slice(0, 40), String(v).slice(0, 120)]),
+                ),
+              }
+            : {}),
+        }
+      : null;
+
+  const answered = isAnswerProvided(snapQuestion.questionType, boundedAnswer);
   const nextStatus = params.isMarkedForReview
     ? 'marked_for_review'
     : answered
@@ -919,7 +1008,7 @@ export async function saveAttemptAnswer(params: {
     .values({
       attemptId: attempt.id,
       questionId: params.questionId,
-      selectedAnswer: params.selectedAnswer,
+      selectedAnswer: boundedAnswer,
       status: nextStatus,
       isMarkedForReview: params.isMarkedForReview,
       savedAt: now,
@@ -927,7 +1016,7 @@ export async function saveAttemptAnswer(params: {
     .onConflictDoUpdate({
       target: [attemptAnswers.attemptId, attemptAnswers.questionId],
       set: {
-        selectedAnswer: params.selectedAnswer,
+        selectedAnswer: boundedAnswer,
         status: nextStatus,
         isMarkedForReview: params.isMarkedForReview,
         savedAt: now,
@@ -1003,15 +1092,24 @@ export async function submitExamAttempt(params: {
       ? 'timeout'
       : 'manual';
 
-  const result = await finalizeAttemptScoring({
+  const finalized = await finalizeAttemptScoring({
     attempt,
     reason: effectiveReason,
     userId: params.userId,
   });
 
+  if (finalized.alreadyFinalized) {
+    await db.insert(attemptEvents).values({
+      attemptId: attempt.id,
+      userId: params.userId,
+      eventType: 'duplicate_submit_blocked',
+      payload: { existingStatus: 'already_finalized' },
+    });
+  }
+
   return {
-    duplicateBlocked: false,
-    result,
+    duplicateBlocked: finalized.alreadyFinalized,
+    result: finalized.result,
     attemptUid: attempt.attemptUid,
   };
 }

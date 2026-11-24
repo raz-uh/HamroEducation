@@ -49,7 +49,8 @@ import {
   validateEditorialTransition,
 } from '../lib/admin-governance.ts';
 import { createQuestionBankItem } from './phase4-queries.ts';
-import { validateVerifiedRecord } from '../lib/explorer.ts';
+import { isSafeHttpUrl, validateVerifiedRecord } from '../lib/explorer.ts';
+import { canManageTargetUserAccount } from '../lib/rbac.ts';
 import type {
   AdminAnalyticsBundle,
   AdminContentResourceItem,
@@ -267,6 +268,43 @@ export async function adminUpdateUserAccount(params: {
 
   if (params.userId === params.actor.id && params.status === 'suspended') {
     throw new Error('You cannot suspend your own active administrator account.');
+  }
+
+  const [targetProfileRows, targetRoleRows, actorRoleRows] = await Promise.all([
+    db.select().from(profiles).where(eq(profiles.userId, params.userId)).limit(1),
+    db
+      .select({ roleSlug: roles.slug, institutionId: userRoles.institutionId })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(and(eq(userRoles.userId, params.userId), eq(userRoles.isActive, true))),
+    db
+      .select({ institutionId: userRoles.institutionId })
+      .from(userRoles)
+      .where(and(eq(userRoles.userId, params.actor.id), eq(userRoles.isActive, true))),
+  ]);
+
+  const targetProfileInst = targetProfileRows[0]?.institutionId ?? null;
+  const targetAssignedInst = targetRoleRows.find((r) => r.institutionId !== null)?.institutionId ?? null;
+  const targetEffectiveInst = targetProfileInst ?? targetAssignedInst;
+
+  const actorInstSet = new Set<number>(
+    actorRoleRows
+      .map((r) => r.institutionId)
+      .filter((id): id is number => typeof id === 'number' && id > 0),
+  );
+
+  const authCheck = canManageTargetUserAccount({
+    actorRoles: params.actor.roles,
+    actorInstitutionIds: Array.from(actorInstSet),
+    targetRoles: targetRoleRows.map((r) => r.roleSlug),
+    targetInstitutionId: targetEffectiveInst,
+    requestedStatus: params.status,
+    requestedInstitutionId: params.institutionId,
+    requestedFullName: params.fullName,
+  });
+
+  if (!authCheck.allowed) {
+    throw new Error(`Forbidden: ${authCheck.reason ?? 'Insufficient privilege to update this user.'}`);
   }
 
   if (params.status) {
@@ -872,6 +910,17 @@ export async function adminUpdateQuestionFields(params: {
     .limit(1);
   if (!existing) return null;
 
+  const isLockedStage = existing.status === 'Published' || existing.status === 'Approval';
+  const canEditPublished =
+    params.actor.permissions.includes('system:admin') ||
+    params.actor.permissions.includes('curriculum:review') ||
+    params.actor.permissions.includes('questions:manage');
+  if (isLockedStage && !canEditPublished) {
+    throw new Error(
+      'Forbidden: Only Question Bank Managers, Academic Reviewers, or Administrators can edit Approved or Published questions.',
+    );
+  }
+
   const nextVersion = existing.version + 1;
   const nextContent =
     typeof params.prompt === 'string' && params.prompt.trim().length >= 5
@@ -1159,6 +1208,9 @@ export async function adminUpsertEntranceExamRecord(params: {
     lastVerifiedDate: params.lastVerifiedDate,
   });
   if (!check.valid) throw new Error(check.reason);
+  if (!isSafeHttpUrl(params.officialUrl)) {
+    throw new Error('Official URL must be a valid http:// or https:// link.');
+  }
 
   const [saved] = await db
     .insert(entranceExams)
@@ -1290,6 +1342,9 @@ export async function adminCreateScholarshipRecord(params: {
     lastVerifiedDate: params.lastVerifiedDate,
   });
   if (!check.valid) throw new Error(check.reason);
+  if (!isSafeHttpUrl(params.officialSourceUrl)) {
+    throw new Error('Official source URL must be a valid http:// or https:// link.');
+  }
 
   const [saved] = await db
     .insert(scholarships)

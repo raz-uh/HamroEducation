@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../context/AuthContext.tsx';
 import type { EntranceCategoryMeta, EntranceExamProfile } from '../lib/entrance-catalog.ts';
 import { QUESTION_TYPE_CATALOG } from '../lib/exam-engine.ts';
+import { isSafeHttpUrl } from '../lib/explorer.ts';
 import type { ExamSummaryItem, QuestionBankItem } from '../types/api.ts';
 
 interface EntranceHubViewProps {
@@ -526,22 +527,24 @@ export function EntranceHubView({ examSlug, onNavigate }: EntranceHubViewProps) 
               <ExternalLink className="h-4 w-4 text-slate-400" aria-hidden="true" />
             </div>
             <ul className="mt-3 space-y-2.5">
-              {profile.officialLinks.map((link) => (
-                <li key={link.url}>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 hover:border-slate-300 hover:bg-white"
-                  >
-                    <span>{link.label}</span>
-                    <span className="inline-flex items-center gap-1 font-mono text-blue-700">
-                      {link.url.replace(/^https?:\/\//, '')}
-                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                    </span>
-                  </a>
-                </li>
-              ))}
+              {profile.officialLinks
+                .filter((link) => isSafeHttpUrl(link.url))
+                .map((link) => (
+                  <li key={link.url}>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 hover:border-slate-300 hover:bg-white"
+                    >
+                      <span>{link.label}</span>
+                      <span className="inline-flex items-center gap-1 font-mono text-blue-700">
+                        {link.url.replace(/^https?:\/\//, '')}
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                      </span>
+                    </a>
+                  </li>
+                ))}
             </ul>
           </div>
         </div>

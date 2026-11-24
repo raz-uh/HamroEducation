@@ -784,7 +784,29 @@ export async function submitDailyChallenge(params: {
     throw new Error('At least one question response is required.');
   }
 
-  const qIds = Array.from(new Set(params.answers.map((a) => a.questionId)));
+  const dedupedAnswersMap = new Map<number, SubmittedAnswerPayload | null>();
+  for (const item of params.answers) {
+    if (
+      typeof item?.questionId === 'number' &&
+      Number.isInteger(item.questionId) &&
+      item.questionId > 0 &&
+      !dedupedAnswersMap.has(item.questionId)
+    ) {
+      dedupedAnswersMap.set(item.questionId, item.selectedAnswer ?? null);
+    }
+    if (dedupedAnswersMap.size >= 25) break;
+  }
+
+  const dedupedAnswers = Array.from(dedupedAnswersMap.entries()).map(([questionId, selectedAnswer]) => ({
+    questionId,
+    selectedAnswer,
+  }));
+
+  if (dedupedAnswers.length === 0) {
+    throw new Error('At least one valid question response is required.');
+  }
+
+  const qIds = dedupedAnswers.map((a) => a.questionId);
   const qRows = await db
     .select()
     .from(questions)
@@ -835,7 +857,7 @@ export async function submitDailyChallenge(params: {
     explanation: string;
   }> = [];
 
-  for (const item of params.answers) {
+  for (const item of dedupedAnswers) {
     const q = qMap.get(item.questionId);
     if (!q) continue;
     const evalOutcome = evaluateQuestionAnswer(

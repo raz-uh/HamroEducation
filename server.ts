@@ -122,9 +122,11 @@ import {
   type AuditActorInfo,
 } from './src/db/phase8-queries.ts';
 import {
+  CSV_IMPORT_MAX_CHARS,
   EDITORIAL_LIFECYCLE_STAGES,
   getAllowedAdminModules,
   normalizeLifecycleStage,
+  validateSafeSvgMarkup,
 } from './src/lib/admin-governance.ts';
 import type { AdminModuleId } from './src/types/api.ts';
 import {
@@ -153,6 +155,7 @@ import { hashPassword, signSessionToken, verifyPassword } from './src/lib/auth-c
 import { adminAuth } from './src/lib/firebase-admin.ts';
 import {
   canAssignRole,
+  canRevokeRole,
   isValidEmail,
   isValidPasswordStrength,
 } from './src/lib/rbac.ts';
@@ -174,6 +177,31 @@ async function createServer() {
   const app = express();
   app.set('trust proxy', true);
   app.use(express.json({ limit: '1mb' }));
+
+  const authRateLimiter = new SlidingWindowRateLimiter();
+  const communityWriteLimiter = new SlidingWindowRateLimiter();
+  const communityReportLimiter = new SlidingWindowRateLimiter();
+  const csvImportLimiter = new SlidingWindowRateLimiter();
+  const examSubmitLimiter = new SlidingWindowRateLimiter();
+
+  function enforceWindowLimit(
+    limiter: SlidingWindowRateLimiter,
+    key: string,
+    maxRequests: number,
+    windowMs: number,
+    label: string,
+    res: express.Response,
+  ): boolean {
+    const decision = limiter.consume(key, maxRequests, windowMs);
+    if (!decision.allowed) {
+      res.setHeader('Retry-After', String(decision.retryAfterSeconds));
+      res.status(429).json({
+        error: `${label} rate limit exceeded. Try again in ${decision.retryAfterSeconds}s.`,
+      });
+      return false;
+    }
+    return true;
+  }
 
   // Health endpoint
   app.get('/api/health', (_req, res) => {
@@ -208,6 +236,9 @@ async function createServer() {
 
   // Email/Password Registration (defaults strictly to Registered Student)
   app.post('/api/auth/register', async (req, res) => {
+    if (!enforceWindowLimit(authRateLimiter, `ip:${req.ip || 'unknown'}`, 20, 5 * 60 * 1000, 'Authentication', res)) {
+      return;
+    }
     try {
       const { email, password, fullName, countryId } = req.body ?? {};
       if (!isValidEmail(email)) {
@@ -254,6 +285,9 @@ async function createServer() {
 
   // Email/Password Sign-In
   app.post('/api/auth/login', async (req, res) => {
+    if (!enforceWindowLimit(authRateLimiter, `ip:${req.ip || 'unknown'}`, 20, 5 * 60 * 1000, 'Sign-in', res)) {
+      return;
+    }
     try {
       const { email, password } = req.body ?? {};
       if (!isValidEmail(email) || typeof password !== 'string' || !password) {
@@ -300,6 +334,9 @@ async function createServer() {
 
   // Google Sign-In Verification & PostgreSQL Sync
   app.post('/api/auth/google', async (req, res) => {
+    if (!enforceWindowLimit(authRateLimiter, `ip:${req.ip || 'unknown'}`, 20, 5 * 60 * 1000, 'Authentication', res)) {
+      return;
+    }
     try {
       const idToken =
         typeof req.body?.idToken === 'string'
@@ -334,6 +371,9 @@ async function createServer() {
 
   // One-time Super Administrator Bootstrap / Passcode Claim
   app.post('/api/auth/claim-super-admin', async (req, res) => {
+    if (!enforceWindowLimit(authRateLimiter, `ip:${req.ip || 'unknown'}`, 10, 5 * 60 * 1000, 'Admin bootstrap', res)) {
+      return;
+    }
     try {
       const { email, password, fullName, passcode } = req.body ?? {};
       if (!isValidEmail(email)) {
@@ -368,6 +408,11 @@ async function createServer() {
       let userId: number;
 
       if (existing) {
+        if (existing.authProvider !== 'local' && !existing.passwordHash) {
+          return res.status(403).json({
+            error: 'Existing Google-authenticated account cannot be claimed with a password.',
+          });
+        }
         if (existing.passwordHash && !verifyPassword(password, existing.passwordHash)) {
           return res.status(401).json({
             error: 'Existing account password does not match.',
@@ -451,13 +496,19 @@ async function createServer() {
       if (typeof displayName === 'string') {
         updates.displayName = displayName.trim().slice(0, 60) || null;
       }
-      if (typeof countryId === 'number' || countryId === null) {
+      if (countryId === null || (typeof countryId === 'number' && Number.isInteger(countryId) && countryId > 0)) {
         updates.countryId = countryId;
       }
-      if (typeof preferredLanguageId === 'number' || preferredLanguageId === null) {
+      if (
+        preferredLanguageId === null ||
+        (typeof preferredLanguageId === 'number' && Number.isInteger(preferredLanguageId) && preferredLanguageId > 0)
+      ) {
         updates.preferredLanguageId = preferredLanguageId;
       }
-      if (typeof institutionId === 'number' || institutionId === null) {
+      if (
+        institutionId === null ||
+        (typeof institutionId === 'number' && Number.isInteger(institutionId) && institutionId > 0)
+      ) {
         updates.institutionId = institutionId;
       }
       if (typeof gradeLevel === 'string') {
@@ -764,12 +815,15 @@ async function createServer() {
         const actor = req.currentUser!;
         const actorRoleSlugs = actor.roles.map((r) => r.slug);
 
-        if (
-          assignment.roleSlug === 'super_administrator' &&
-          !actorRoleSlugs.includes('super_administrator')
-        ) {
+        const revokeCheck = canRevokeRole({
+          actorRoles: actorRoleSlugs,
+          targetRoleSlug: assignment.roleSlug,
+          actorInstitutionIds: actor.institutionIds,
+          targetInstitutionId: assignment.institutionId ?? null,
+        });
+        if (!revokeCheck.allowed) {
           return res.status(403).json({
-            error: 'Only a Super Administrator can revoke another Super Administrator.',
+            error: revokeCheck.reason ?? 'Forbidden: cannot revoke this role assignment.',
           });
         }
 
@@ -1047,7 +1101,9 @@ async function createServer() {
           typeof title !== 'string' ||
           title.trim().length < 3 ||
           typeof summary !== 'string' ||
-          !contentEn
+          !contentEn ||
+          typeof contentEn !== 'object' ||
+          Array.isArray(contentEn)
         ) {
           return res.status(400).json({ error: 'Missing required resource fields.' });
         }
@@ -1063,6 +1119,19 @@ async function createServer() {
           resourceType: typeof resourceType === 'string' ? resourceType : categorySlug,
           contentEn,
           tags: Array.isArray(tags) ? tags : [],
+        });
+        await recordAuditLog({
+          actor: {
+            id: req.currentUser!.id,
+            email: req.currentUser!.email,
+            roles: req.currentUser!.roles.map((r) => r.slug),
+            ipAddress: req.ip ?? null,
+          },
+          action: 'SCHOOL_RESOURCE_CREATED',
+          targetEntity: 'resources',
+          targetId: created.id,
+          summary: `Created school resource "${created.title}" (status=${created.status}).`,
+          metadata: { status: created.status, categorySlug },
         });
         return res.status(201).json({ resource: created });
       } catch (error) {
@@ -1217,6 +1286,11 @@ async function createServer() {
           return res.status(400).json({ error: 'Missing required question fields.' });
         }
 
+        const svgCheck = validateSafeSvgMarkup(body.questionContent?.diagramSvg);
+        if (!svgCheck.valid) {
+          return res.status(400).json({ error: svgCheck.reason });
+        }
+
         const requestedStatus = QUESTION_WORKFLOW_STAGES.includes(body.status)
           ? body.status
           : 'Draft';
@@ -1275,6 +1349,7 @@ async function createServer() {
     async (req: AuthRequest, res) => {
       try {
         const perms = req.currentUser!.permissions;
+        const actorRoles = req.currentUser!.roles.map((r) => r.slug);
         if (
           !perms.includes('questions:manage') &&
           !perms.includes('curriculum:review') &&
@@ -1312,6 +1387,8 @@ async function createServer() {
           nextStatus,
           actorId: req.currentUser!.id,
           actorName: req.currentUser!.profile?.fullName ?? req.currentUser!.email,
+          actorRoles,
+          actorPermissions: perms,
           updatedPrompt: typeof updatedPrompt === 'string' ? updatedPrompt : undefined,
           updatedExplanation:
             typeof updatedExplanation === 'string' ? updatedExplanation : undefined,
@@ -1325,7 +1402,7 @@ async function createServer() {
           actor: {
             id: req.currentUser!.id,
             email: req.currentUser!.email,
-            roles: req.currentUser!.roles.map((r) => r.slug),
+            roles: actorRoles,
             ipAddress: req.ip ?? null,
           },
           action: 'QUESTION_STATUS_CHANGED',
@@ -1337,8 +1414,17 @@ async function createServer() {
 
         return res.json({ question: updated });
       } catch (error) {
-        console.error('Transition question status error:', error);
-        return res.status(500).json({ error: 'Failed to transition question workflow status.' });
+        const message =
+          error instanceof Error ? error.message : 'Failed to transition question workflow status.';
+        const status =
+          message.includes('AI-generated') ||
+          message.includes('Only ') ||
+          message.includes('requires') ||
+          message.includes('verified source') ||
+          message.includes('Insufficient')
+            ? 403
+            : 400;
+        return res.status(status).json({ error: message });
       }
     },
   );
@@ -1415,6 +1501,18 @@ async function createServer() {
     '/api/exams/attempts/:attemptUid/submit',
     requireAuth,
     async (req: AuthRequest, res) => {
+      if (
+        !enforceWindowLimit(
+          examSubmitLimiter,
+          `exam-submit:${req.currentUser!.id}`,
+          15,
+          60 * 1000,
+          'Exam submission',
+          res,
+        )
+      ) {
+        return;
+      }
       try {
         const reason = req.body?.reason === 'timeout' ? 'timeout' : 'manual';
         const outcome = await submitExamAttempt({
@@ -1557,10 +1655,25 @@ async function createServer() {
   });
 
   app.post('/api/practice/daily/submit', requireAuth, async (req: AuthRequest, res) => {
+    if (
+      !enforceWindowLimit(
+        examSubmitLimiter,
+        `daily-submit:${req.currentUser!.id}`,
+        15,
+        60 * 1000,
+        'Daily challenge submission',
+        res,
+      )
+    ) {
+      return;
+    }
     try {
       const { mode, answers } = req.body ?? {};
       if (!Array.isArray(answers) || answers.length === 0) {
         return res.status(400).json({ error: 'Answers array is required.' });
+      }
+      if (answers.length > 25) {
+        return res.status(400).json({ error: 'Challenge submission cannot exceed 25 answers.' });
       }
       const result = await submitDailyChallenge({
         userId: req.currentUser!.id,
@@ -2194,6 +2307,18 @@ async function createServer() {
   });
 
   app.post('/api/community/posts', requireAuth, async (req: AuthRequest, res) => {
+    if (
+      !enforceWindowLimit(
+        communityWriteLimiter,
+        `community:${req.currentUser!.id}`,
+        20,
+        5 * 60 * 1000,
+        'Community posting',
+        res,
+      )
+    ) {
+      return;
+    }
     try {
       const { groupId, title, body, postType, tags } = req.body ?? {};
       if (typeof groupId !== 'number' || !Number.isInteger(groupId) || groupId <= 0) {
@@ -2224,6 +2349,18 @@ async function createServer() {
   });
 
   app.post('/api/community/posts/:id/comments', requireAuth, async (req: AuthRequest, res) => {
+    if (
+      !enforceWindowLimit(
+        communityWriteLimiter,
+        `community:${req.currentUser!.id}`,
+        20,
+        5 * 60 * 1000,
+        'Community reply',
+        res,
+      )
+    ) {
+      return;
+    }
     try {
       const postId = Number(req.params.id);
       if (!Number.isInteger(postId) || postId <= 0) {
@@ -2249,9 +2386,21 @@ async function createServer() {
   });
 
   app.post('/api/community/vote', requireAuth, async (req: AuthRequest, res) => {
+    if (
+      !enforceWindowLimit(
+        communityWriteLimiter,
+        `community:${req.currentUser!.id}`,
+        30,
+        5 * 60 * 1000,
+        'Community voting',
+        res,
+      )
+    ) {
+      return;
+    }
     try {
       const { targetType, targetId } = req.body ?? {};
-      if ((targetType !== 'post' && targetType !== 'comment') || typeof targetId !== 'number' || !Number.isInteger(targetId)) {
+      if ((targetType !== 'post' && targetType !== 'comment') || typeof targetId !== 'number' || !Number.isInteger(targetId) || targetId <= 0) {
         return res.status(400).json({ error: 'Valid targetType and targetId are required.' });
       }
       const outcome = await toggleCommunityVote({
@@ -2261,8 +2410,9 @@ async function createServer() {
       });
       return res.json(outcome);
     } catch (error) {
-      console.error('Community vote error:', error);
-      return res.status(500).json({ error: 'Failed to update vote.' });
+      const message = error instanceof Error ? error.message : 'Failed to update vote.';
+      const status = message.includes('not found') ? 404 : 500;
+      return res.status(status).json({ error: message });
     }
   });
 
@@ -2296,9 +2446,21 @@ async function createServer() {
   });
 
   app.post('/api/community/reports', requireAuth, async (req: AuthRequest, res) => {
+    if (
+      !enforceWindowLimit(
+        communityReportLimiter,
+        `report:${req.currentUser!.id}`,
+        6,
+        10 * 60 * 1000,
+        'Community reporting',
+        res,
+      )
+    ) {
+      return;
+    }
     try {
       const { targetType, targetId, reason, details } = req.body ?? {};
-      if ((targetType !== 'post' && targetType !== 'comment') || typeof targetId !== 'number' || !Number.isInteger(targetId)) {
+      if ((targetType !== 'post' && targetType !== 'comment') || typeof targetId !== 'number' || !Number.isInteger(targetId) || targetId <= 0) {
         return res.status(400).json({ error: 'Valid targetType and targetId are required.' });
       }
       const reasonCheck = validateAiPromptText(reason || 'Inappropriate or inaccurate content', {
@@ -2318,7 +2480,8 @@ async function createServer() {
       return res.status(201).json({ report });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to submit report.';
-      return res.status(400).json({ error: message });
+      const status = message.includes('already submitted') ? 409 : 400;
+      return res.status(status).json({ error: message });
     }
   });
 
@@ -2463,7 +2626,11 @@ async function createServer() {
           actor: toAuditActor(req),
           userId,
           status,
-          institutionId: institutionId === null || typeof institutionId === 'number' ? institutionId : undefined,
+          institutionId:
+            institutionId === null ||
+            (typeof institutionId === 'number' && Number.isInteger(institutionId) && institutionId > 0)
+              ? institutionId
+              : undefined,
           fullName: typeof fullName === 'string' ? fullName : undefined,
         });
         if (!updated) {
@@ -2472,7 +2639,8 @@ async function createServer() {
         return res.json(updated);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update user account.';
-        return res.status(400).json({ error: message });
+        const statusCode = message.startsWith('Forbidden:') ? 403 : 400;
+        return res.status(statusCode).json({ error: message });
       }
     },
   );
@@ -2676,10 +2844,27 @@ async function createServer() {
     requireAuth,
     requireAdminModule('questions'),
     async (req: AuthRequest, res) => {
+      if (
+        !enforceWindowLimit(
+          csvImportLimiter,
+          `csv-import:${req.currentUser!.id}`,
+          10,
+          10 * 60 * 1000,
+          'CSV bulk import',
+          res,
+        )
+      ) {
+        return;
+      }
       try {
         const { csvText, initialStage } = req.body ?? {};
         if (typeof csvText !== 'string' || csvText.trim().length < 10) {
           return res.status(400).json({ error: 'Valid CSV text payload is required.' });
+        }
+        if (csvText.length > CSV_IMPORT_MAX_CHARS) {
+          return res.status(400).json({
+            error: `CSV payload exceeds the ${Math.round(CSV_IMPORT_MAX_CHARS / 1000)} KB batch limit.`,
+          });
         }
         const report = await adminBulkImportQuestionsCsv({
           actor: toAuditActor(req),
@@ -2704,10 +2889,16 @@ async function createServer() {
         if (!Number.isInteger(questionId) || questionId <= 0) {
           return res.status(400).json({ error: 'Invalid question ID.' });
         }
+        const { prompt, explanation, difficulty, marks, negativeMarks, source } = req.body ?? {};
         const updated = await adminUpdateQuestionFields({
           actor: toAuditActor(req),
           questionId,
-          ...(req.body ?? {}),
+          prompt: typeof prompt === 'string' ? prompt : undefined,
+          explanation: typeof explanation === 'string' ? explanation : undefined,
+          difficulty: typeof difficulty === 'string' ? difficulty : undefined,
+          marks: typeof marks === 'number' ? marks : undefined,
+          negativeMarks: typeof negativeMarks === 'number' ? negativeMarks : undefined,
+          source: typeof source === 'string' ? source : undefined,
         });
         if (!updated) {
           return res.status(404).json({ error: 'Question not found.' });
@@ -2715,7 +2906,8 @@ async function createServer() {
         return res.json({ question: updated });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to update question.';
-        return res.status(400).json({ error: message });
+        const statusCode = message.startsWith('Forbidden:') ? 403 : 400;
+        return res.status(statusCode).json({ error: message });
       }
     },
   );

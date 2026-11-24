@@ -505,7 +505,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
                   <Shield className="mt-0.5 h-4 w-4 shrink-0 text-red-700" aria-hidden="true" />
                   <span>
                     {bootstrapStatus.passcodeConfigured
-                      ? 'Enter the server-configured ADMIN_BOOTSTRAP_PASSCODE to elevate or register a Super Administrator.'
+                      ? 'Enter the server-configured bootstrap passcode to elevate or register a Super Administrator.'
                       : 'First-run bootstrap: no Super Administrator exists yet. Claiming this once creates the initial Super Administrator and locks this route.'}
                   </span>
                 </div>
