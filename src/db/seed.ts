@@ -15,16 +15,29 @@ import {
   subjects,
   topics,
 } from './schema.ts';
+import { ensurePhase4Seeded } from './seed-phase4.ts';
+import { ensurePhase5Seeded } from './seed-phase5.ts';
+import { ensurePhase6Seeded } from './seed-phase6.ts';
+import { ensurePhase7Seeded } from './seed-phase7.ts';
+import { ensurePhase8Seeded } from './seed-phase8.ts';
+import { ensureSchoolSeeded } from './seed-school.ts';
 import { PERMISSION_CATALOG, ROLE_CATALOG } from '../lib/rbac.ts';
 
 let seedPromise: Promise<void> | null = null;
 
 export async function ensureSeeded(): Promise<void> {
   if (!seedPromise) {
-    seedPromise = runSeed().catch((err) => {
-      seedPromise = null;
-      throw err;
-    });
+    seedPromise = runSeed()
+      .then(() => ensureSchoolSeeded())
+      .then(() => ensurePhase4Seeded())
+      .then(() => ensurePhase5Seeded())
+      .then(() => ensurePhase6Seeded())
+      .then(() => ensurePhase7Seeded())
+      .then(() => ensurePhase8Seeded())
+      .catch((err) => {
+        seedPromise = null;
+        throw err;
+      });
   }
   return seedPromise;
 }
@@ -86,7 +99,7 @@ async function runSeed(): Promise<void> {
       return;
     }
 
-    // Seed Countries: Nepal (Primary), India, United Kingdom
+    // Seed Country: Nepal (Primary)
     const [nepal] = await db
       .insert(countries)
       .values({
@@ -101,36 +114,8 @@ async function runSeed(): Promise<void> {
       })
       .returning();
 
-    const [india] = await db
-      .insert(countries)
-      .values({
-        isoCode: 'IN',
-        name: 'India',
-        nativeName: 'भारत',
-        defaultTimezone: 'Asia/Kolkata',
-        phoneCode: '+91',
-        currencyCode: 'INR',
-        isPrimary: false,
-        isActive: true,
-      })
-      .returning();
-
-    const [uk] = await db
-      .insert(countries)
-      .values({
-        isoCode: 'GB',
-        name: 'United Kingdom',
-        nativeName: 'United Kingdom',
-        defaultTimezone: 'Europe/London',
-        phoneCode: '+44',
-        currencyCode: 'GBP',
-        isPrimary: false,
-        isActive: true,
-      })
-      .returning();
-
     // Seed Languages
-    const [npNepali, npEnglish, npMaithili, inEnglish, inHindi, gbEnglish] = await db
+    const [npNepali, npEnglish] = await db
       .insert(languages)
       .values([
         {
@@ -156,30 +141,6 @@ async function runSeed(): Promise<void> {
           nativeName: 'मैथिली',
           script: 'Devanagari',
           isDefault: false,
-        },
-        {
-          countryId: india.id,
-          isoCode: 'en',
-          name: 'English (India)',
-          nativeName: 'English',
-          script: 'Latin',
-          isDefault: true,
-        },
-        {
-          countryId: india.id,
-          isoCode: 'hi',
-          name: 'Hindi',
-          nativeName: 'हिन्दी',
-          script: 'Devanagari',
-          isDefault: false,
-        },
-        {
-          countryId: uk.id,
-          isoCode: 'en',
-          name: 'English (UK)',
-          nativeName: 'English',
-          script: 'Latin',
-          isDefault: true,
         },
       ])
       .returning();
@@ -226,30 +187,10 @@ async function runSeed(): Promise<void> {
         domain: 'tu.edu.np',
         isVerified: true,
       },
-      {
-        countryId: india.id,
-        name: 'Delhi Public School, R.K. Puram',
-        code: 'IN-DPSRKP-001',
-        institutionType: 'school',
-        provinceOrState: 'Delhi NCR',
-        city: 'New Delhi',
-        domain: 'dpsrkp.net',
-        isVerified: true,
-      },
-      {
-        countryId: uk.id,
-        name: 'Westminster Academy',
-        code: 'GB-WEST-001',
-        institutionType: 'school',
-        provinceOrState: 'Greater London',
-        city: 'London',
-        domain: 'westminsteracademy.org.uk',
-        isVerified: true,
-      },
     ]);
 
     // Seed Curricula
-    const [npCdc, npCtevt, inCbse, gbGcse] = await db
+    const [npCdc, npCtevt] = await db
       .insert(curricula)
       .values([
         {
@@ -268,24 +209,6 @@ async function runSeed(): Promise<void> {
           name: 'CTEVT Technical & Vocational Track',
           governingBody: 'Council for Technical Education and Vocational Training',
           academicCalendar: 'Bikram Sambat (BS)',
-          status: 'published',
-        },
-        {
-          countryId: india.id,
-          languageId: inEnglish.id,
-          code: 'IN-CBSE',
-          name: 'CBSE National Curriculum (NCERT)',
-          governingBody: 'Central Board of Secondary Education',
-          academicCalendar: 'Gregorian (AD)',
-          status: 'published',
-        },
-        {
-          countryId: uk.id,
-          languageId: gbEnglish.id,
-          code: 'GB-NC-GCSE',
-          name: 'UK National Curriculum & GCSE',
-          governingBody: 'Department for Education & Ofqual',
-          academicCalendar: 'Gregorian (AD)',
           status: 'published',
         },
       ])
@@ -329,33 +252,8 @@ async function runSeed(): Promise<void> {
       ])
       .returning();
 
-    // India & UK Levels
-    const [inSec] = await db
-      .insert(educationLevels)
-      .values([
-        {
-          curriculumId: inCbse.id,
-          code: 'senior_secondary',
-          name: 'Senior Secondary (Classes 11–12)',
-          sortOrder: 1,
-        },
-      ])
-      .returning();
-
-    const [gbKs4] = await db
-      .insert(educationLevels)
-      .values([
-        {
-          curriculumId: gbGcse.id,
-          code: 'key_stage_4',
-          name: 'Key Stage 4 (GCSE)',
-          sortOrder: 1,
-        },
-      ])
-      .returning();
-
     // Seed Grades
-    const [g8, g10, g11, g12, gCtevt1, gIn12, gUk11] = await db
+    const [g8, g10, g11, g12, gCtevt1] = await db
       .insert(grades)
       .values([
         { educationLevelId: npBasic.id, code: 'G8', name: 'Grade 8 (BLE)', numericLevel: 8, sortOrder: 1 },
@@ -363,13 +261,11 @@ async function runSeed(): Promise<void> {
         { educationLevelId: npHigherSec.id, code: 'G11', name: 'Grade 11 (+2 NEB)', numericLevel: 11, sortOrder: 1 },
         { educationLevelId: npHigherSec.id, code: 'G12', name: 'Grade 12 (+2 NEB)', numericLevel: 12, sortOrder: 2 },
         { educationLevelId: ctevtDiploma.id, code: 'Y1', name: 'First Year Diploma', numericLevel: 11, sortOrder: 1 },
-        { educationLevelId: inSec.id, code: 'C12', name: 'Class 12 (CBSE Board)', numericLevel: 12, sortOrder: 1 },
-        { educationLevelId: gbKs4.id, code: 'Y11', name: 'Year 11 (GCSE)', numericLevel: 11, sortOrder: 1 },
       ])
       .returning();
 
     // Seed Streams
-    const [sG8Gen, sG10Gen, sG11Sci, sG11Mgmt, sG12Sci, sG12Mgmt, sCtevtComp, sInSci, sUkStem] =
+    const [sG8Gen, sG10Gen, sG11Sci, sG11Mgmt, sG12Sci, sG12Mgmt, sCtevtComp] =
       await db
         .insert(streams)
         .values([
@@ -422,20 +318,6 @@ async function runSeed(): Promise<void> {
             description: 'Applied technical computing and hardware fundamentals.',
             sortOrder: 1,
           },
-          {
-            gradeId: gIn12.id,
-            code: 'pcm',
-            name: 'Science (PCM)',
-            description: 'Physics, Chemistry, and Mathematics NCERT track.',
-            sortOrder: 1,
-          },
-          {
-            gradeId: gUk11.id,
-            code: 'stem',
-            name: 'GCSE STEM Core',
-            description: 'Key Stage 4 Mathematics and Combined Sciences.',
-            sortOrder: 1,
-          },
         ])
         .returning();
 
@@ -453,8 +335,6 @@ async function runSeed(): Promise<void> {
       subG12Math,
       subG12Acc,
       subCtevtC,
-      subInPhy,
-      subUkMath,
     ] = await db
       .insert(subjects)
       .values([
@@ -566,24 +446,6 @@ async function runSeed(): Promise<void> {
           isCompulsory: true,
           sortOrder: 1,
         },
-        {
-          streamId: sInSci.id,
-          languageId: inEnglish.id,
-          code: 'CBSE-PHY-12',
-          name: 'Physics Part I & II (NCERT)',
-          creditHours: 5,
-          isCompulsory: true,
-          sortOrder: 1,
-        },
-        {
-          streamId: sUkStem.id,
-          languageId: gbEnglish.id,
-          code: 'GCSE-MAT-H',
-          name: 'GCSE Mathematics (Higher Tier)',
-          creditHours: 4,
-          isCompulsory: true,
-          sortOrder: 1,
-        },
       ])
       .returning();
 
@@ -604,8 +466,6 @@ async function runSeed(): Promise<void> {
       chG12Calculus,
       chG12Shares,
       chCtevtPointers,
-      chInElectro,
-      chUkAlgebra,
     ] = await db
       .insert(chapters)
       .values([
@@ -712,20 +572,6 @@ async function runSeed(): Promise<void> {
           chapterNumber: 1,
           title: 'Pointers and Dynamic Memory in C',
           summary: 'Pointer arithmetic, arrays, and malloc/free memory management.',
-          estimatedHours: 10,
-        },
-        {
-          subjectId: subInPhy.id,
-          chapterNumber: 1,
-          title: 'Electric Charges and Fields',
-          summary: 'Coulomb’s law, electric flux, and Gauss’s law applications.',
-          estimatedHours: 14,
-        },
-        {
-          subjectId: subUkMath.id,
-          chapterNumber: 1,
-          title: 'Quadratic Equations & Algebraic Proof',
-          summary: 'Completing the square, quadratic formula, and algebraic reasoning.',
           estimatedHours: 10,
         },
       ])
@@ -866,22 +712,6 @@ async function runSeed(): Promise<void> {
         topicNumber: '1.1',
         title: 'Call by Reference & Pointer Arithmetic',
         learningObjectives: 'Manipulate memory addresses safely in C functions and array traversal.',
-        difficultyLevel: 'intermediate',
-        estimatedMinutes: 45,
-      },
-      {
-        chapterId: chInElectro.id,
-        topicNumber: '1.1',
-        title: 'Gauss’s Law for Spherical & Cylindrical Symmetry',
-        learningObjectives: 'Calculate electric field intensity inside and outside charged shells using Gaussian surfaces.',
-        difficultyLevel: 'advanced',
-        estimatedMinutes: 55,
-      },
-      {
-        chapterId: chUkAlgebra.id,
-        topicNumber: '1.1',
-        title: 'Turning Points via Completing the Square',
-        learningObjectives: 'Transform ax² + bx + c into vertex form to identify parabola extrema.',
         difficultyLevel: 'intermediate',
         estimatedMinutes: 45,
       },

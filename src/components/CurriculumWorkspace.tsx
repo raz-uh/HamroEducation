@@ -218,11 +218,11 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
             id="curriculum-heading"
             className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl text-balance"
           >
-            National &amp; Global Curriculum Architecture
+            Nepal National Curriculum Architecture
           </h1>
           <p className="text-sm text-slate-600 leading-relaxed">
             Explore the 9-tier relational hierarchy from country and medium of instruction down to
-            chapters and verified learning objectives.
+            chapters and verified learning objectives across CDC/NEB and CTEVT tracks.
           </p>
         </div>
 
@@ -234,8 +234,6 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
           >
             {(data?.countries ?? [
               { isoCode: 'NP', name: 'Nepal', nativeName: 'नेपाल' },
-              { isoCode: 'IN', name: 'India', nativeName: 'भारत' },
-              { isoCode: 'GB', name: 'United Kingdom', nativeName: 'United Kingdom' },
             ]).map((country) => {
               const isSelected = countryIso === country.isoCode;
               return (

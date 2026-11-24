@@ -1,6 +1,19 @@
 import { useAuth } from '../context/AuthContext.tsx';
 
-export type WorkspaceTab = 'curriculum' | 'rbac' | 'institutions' | 'schema';
+export type WorkspaceTab =
+  | 'dashboard'
+  | 'curriculum'
+  | 'school'
+  | 'entrance'
+  | 'exams'
+  | 'explore'
+  | 'community'
+  | 'daily-practice'
+  | 'question-bank'
+  | 'rbac'
+  | 'institutions'
+  | 'admin'
+  | 'schema';
 
 interface TopBarProps {
   activeTab: WorkspaceTab;
@@ -9,9 +22,18 @@ interface TopBarProps {
 }
 
 const NAV_ITEMS: Array<{ id: WorkspaceTab; label: string }> = [
+  { id: 'dashboard', label: 'Dashboard' },
   { id: 'curriculum', label: 'Curriculum' },
-  { id: 'rbac', label: 'Access & Roles' },
+  { id: 'school', label: 'School' },
+  { id: 'entrance', label: 'Entrance' },
+  { id: 'exams', label: 'Exams' },
+  { id: 'explore', label: 'Explore' },
+  { id: 'community', label: 'Community' },
+  { id: 'daily-practice', label: 'Daily' },
+  { id: 'question-bank', label: 'Q-Bank' },
+  { id: 'rbac', label: 'Roles' },
   { id: 'institutions', label: 'Institutions' },
+  { id: 'admin', label: 'Admin' },
   { id: 'schema', label: 'Schema' },
 ];
 
@@ -21,7 +43,7 @@ export function TopBar({ activeTab, onSelectTab, onOpenAuth }: TopBarProps) {
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-8 px-6 py-3.5">
+      <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
         <a
           href="#curriculum"
           onClick={(e) => {
@@ -35,7 +57,7 @@ export function TopBar({ activeTab, onSelectTab, onOpenAuth }: TopBarProps) {
 
         <nav
           aria-label="Primary workspace navigation"
-          className="hidden md:flex items-center gap-6"
+          className="hidden lg:flex items-center lg:gap-1.5 xl:gap-2.5"
         >
           {NAV_ITEMS.map((item) => {
             const isActive = activeTab === item.id;
@@ -45,7 +67,7 @@ export function TopBar({ activeTab, onSelectTab, onOpenAuth }: TopBarProps) {
                 type="button"
                 onClick={() => onSelectTab(item.id)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative py-1 text-sm font-medium transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-700 ${
+                className={`relative py-1 lg:text-[11px] xl:text-[13px] font-medium transition-colors whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-700 ${
                   isActive
                     ? 'text-slate-900 after:absolute after:inset-x-0 after:-bottom-[15px] after:h-[2px] after:bg-red-700'
                     : 'text-slate-600 hover:text-slate-900'
@@ -71,7 +93,7 @@ export function TopBar({ activeTab, onSelectTab, onOpenAuth }: TopBarProps) {
       {/* Mobile secondary nav strip keeping sticky height compact */}
       <nav
         aria-label="Mobile workspace navigation"
-        className="flex md:hidden items-center gap-4 overflow-x-auto border-t border-slate-100 px-4 py-2"
+        className="flex lg:hidden items-center gap-4 overflow-x-auto border-t border-slate-100 px-4 py-2"
       >
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
