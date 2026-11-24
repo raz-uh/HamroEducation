@@ -51,8 +51,8 @@ export function ExamsHubView({ onNavigate }: ExamsHubViewProps) {
       <div className="border-b border-slate-200 pb-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-medium text-red-700">
-              Section 8 · Server-Validated Examination Engine
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+              Test · Timed Mock Examination Center
             </p>
             <h1
               id="exams-hub-title"
@@ -62,7 +62,7 @@ export function ExamsHubView({ onNavigate }: ExamsHubViewProps) {
             </h1>
             <p className="mt-1.5 max-w-2xl text-sm text-slate-600">
               Complete mock examinations for SEE, Class 12 Science &amp; Management, BSc CSIT,
-              CMAT, IOE, and MECEE-BL powered by immutable attempt snapshots and server-side
+              CMAT, IOE, and MECEE-BL with live countdowns, question palette, and server-validated
               negative marking.
             </p>
           </div>
@@ -81,7 +81,7 @@ export function ExamsHubView({ onNavigate }: ExamsHubViewProps) {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setCategoryFilter(tab.id)}
-                  className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  className={`min-h-[40px] rounded-md border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                     active
                       ? 'border-slate-900 bg-slate-900 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -204,7 +204,7 @@ export function ExamsHubView({ onNavigate }: ExamsHubViewProps) {
                   <button
                     type="button"
                     onClick={() => onNavigate(`/exams/${exam.slug}`)}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-3.5 py-2 text-xs font-semibold text-white hover:bg-red-800"
+                    className="inline-flex min-h-[42px] items-center gap-1.5 rounded-lg bg-red-700 px-4 py-2 text-xs font-semibold text-white hover:bg-red-800"
                   >
                     {exam.hasActiveAttempt ? (
                       <>
@@ -224,7 +224,7 @@ export function ExamsHubView({ onNavigate }: ExamsHubViewProps) {
                     <button
                       type="button"
                       onClick={() => onNavigate(`/exams/${exam.slug}/result`)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      className="inline-flex min-h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                     >
                       <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
                       Result &amp; Analytics

@@ -539,7 +539,7 @@ export function SchoolGradeView({
                   <button
                     type="button"
                     onClick={() => onNavigate(chapterTargetUrl(subject.code, ch.chapterNumber))}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 shrink-0"
+                    className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 shrink-0"
                   >
                     Open
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -611,8 +611,8 @@ export function SchoolGradeView({
       <div className="border-b border-slate-200 pb-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-medium text-red-700">
-              Nepal School Learning System · CDC &amp; NEB Aligned
+            <p className="text-xs font-semibold uppercase tracking-wider text-red-700">
+              Learn · CDC &amp; NEB School Curriculum
             </p>
             <h1
               id="school-grade-heading"
@@ -650,7 +650,7 @@ export function SchoolGradeView({
                   role="tab"
                   aria-selected={g.active}
                   onClick={() => onNavigate(`/school/${g.slug}`)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
+                  className={`min-h-[38px] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
                     g.active
                       ? 'bg-slate-900 text-white'
                       : 'text-slate-600 hover:text-slate-900'
@@ -670,7 +670,7 @@ export function SchoolGradeView({
                   setBookmarksOpen(true);
                 }
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-slate-300"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-slate-300"
             >
               <Bookmark className="h-3.5 w-3.5 text-red-700" aria-hidden="true" />
               Saved Bookmarks
@@ -748,7 +748,7 @@ export function SchoolGradeView({
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {RESOURCE_MODES.map((mode) => {
             const active = activeMode === mode.id;
             return (
@@ -756,7 +756,7 @@ export function SchoolGradeView({
                 key={mode.id}
                 type="button"
                 onClick={() => setActiveMode(mode.id)}
-                className={`rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`min-h-[38px] rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
                   active
                     ? 'border-red-700 bg-red-700 text-white'
                     : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white'
@@ -1057,7 +1057,7 @@ export function SchoolGradeView({
                       role="tab"
                       aria-selected={active}
                       onClick={() => setSelectedStreamCode(stream.code)}
-                      className={`rounded-md border px-3.5 py-2 text-xs font-semibold transition-colors ${
+                      className={`min-h-[40px] rounded-md border px-3.5 py-2 text-xs font-semibold transition-colors ${
                         active
                           ? 'border-red-700 bg-red-700 text-white'
                           : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white hover:border-slate-300'

@@ -20,6 +20,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
+import { StudentSubNav } from './StudentSubNav.tsx';
 import type { AnnouncementItem, StudentDashboardResponse } from '../types/api.ts';
 
 interface StudentDashboardViewProps {
@@ -116,7 +117,9 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
     return (
       <section aria-labelledby="dashboard-guest-heading" className="space-y-6">
         <div className="border-b border-slate-200 pb-6">
-          <p className="text-xs font-medium text-red-700">Section 9 &amp; 10 · Personalized Learning Hub</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-red-700">
+            Personalized Mastery Hub
+          </p>
           <h1
             id="dashboard-guest-heading"
             className="mt-1 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
@@ -130,14 +133,18 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center space-y-4">
-          <GraduationCap className="mx-auto h-9 w-9 text-slate-700" aria-hidden="true" />
+        <StudentSubNav active="overview" onNavigate={onNavigate} />
+
+        <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 text-center space-y-4">
+          <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-700">
+            <GraduationCap className="h-6 w-6" aria-hidden="true" />
+          </span>
           <div className="space-y-1.5">
             <h2 className="font-display text-xl font-bold text-slate-900">
               Sign in to open your personalized dashboard
             </h2>
             <p className="mx-auto max-w-lg text-sm text-slate-600">
-              All 14 learning widgets, mistake tracking, spaced repetition, and topic mastery graphs
+              Your learning progress, mistake tracking, spaced repetition, and topic mastery graphs
               sync automatically to your learner account.
             </p>
           </div>
@@ -145,14 +152,14 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
             <button
               type="button"
               onClick={onOpenAuth}
-              className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+              className="min-h-[44px] rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
             >
               Sign In or Create Account
             </button>
             <button
               type="button"
               onClick={() => onNavigate('/practice/daily')}
-              className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="min-h-[44px] rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
               Preview Daily Challenge
             </button>
@@ -180,6 +187,13 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
 
   return (
     <section aria-labelledby="student-dashboard-heading" className="space-y-6">
+      <StudentSubNav
+        active="overview"
+        onNavigate={onNavigate}
+        unresolvedMistakes={data.mistakeBookSummary.unresolved}
+        dueFlashcards={data.dueFlashcardsCount}
+      />
+
       {error && (
         <div
           role="alert"
@@ -201,13 +215,16 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
       )}
 
       {/* Prominent Dynamic Recommended Next Action Banner */}
-      <div className="rounded-xl border border-slate-900 bg-slate-900 p-6 text-white">
+      <div className="rounded-2xl border border-slate-900 bg-slate-900 p-5 sm:p-6 text-white">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-              <span className="font-semibold text-amber-300">Recommended Next Action</span>
+              <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-amber-300">
+                <Target className="h-3.5 w-3.5" aria-hidden="true" />
+                Recommended Next Action
+              </span>
               <span aria-hidden="true">·</span>
-              <span className="font-mono tabular-nums">{nextAction.metricBadge}</span>
+              <span className="font-mono tabular-nums text-white">{nextAction.metricBadge}</span>
               <span aria-hidden="true">·</span>
               <span>{data.todayDate}</span>
             </div>
@@ -220,7 +237,7 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
           <button
             type="button"
             onClick={() => onNavigate(nextAction.route)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-xs font-semibold text-white hover:bg-red-500 transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white hover:bg-red-500 transition-colors whitespace-nowrap shrink-0"
           >
             <span>{nextAction.ctaLabel}</span>
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -229,11 +246,11 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
       </div>
 
       {/* Widget 1: Welcome Banner */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-medium text-red-700">
-              Student Dashboard · {data.goal.targetTrack}
+            <p className="text-xs font-semibold uppercase tracking-wider text-red-700">
+              Student Mastery Hub · {data.goal.targetTrack}
             </p>
             <h1
               id="student-dashboard-heading"
@@ -242,7 +259,11 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
               Namaste, {studentDisplayName}
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Target Focus: <strong className="text-slate-900">{data.goal.targetExamName || data.goal.targetTrack}</strong> · Daily Goal:{' '}
+              Target Focus:{' '}
+              <strong className="text-slate-900">
+                {data.goal.targetExamName || data.goal.targetTrack}
+              </strong>{' '}
+              · Daily Goal:{' '}
               <span className="font-mono tabular-nums">{data.goal.dailyStudyMinutes} min</span> ·{' '}
               <span className="font-mono tabular-nums">{data.goal.dailyQuestionTarget} Qs/day</span>
             </p>
@@ -252,28 +273,28 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
             <button
               type="button"
               onClick={() => onNavigate('/dashboard/mistakes')}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
+              className="min-h-[40px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
             >
               Mistake Book ({data.mistakeBookSummary.unresolved})
             </button>
             <button
               type="button"
               onClick={() => onNavigate('/dashboard/flashcards')}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
+              className="min-h-[40px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
             >
               Flashcards ({data.dueFlashcardsCount} due)
             </button>
             <button
               type="button"
               onClick={() => onNavigate('/dashboard/planner')}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
+              className="min-h-[40px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap"
             >
               Study Planner
             </button>
             <button
               type="button"
               onClick={() => onNavigate('/practice/daily')}
-              className="rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
+              className="min-h-[40px] rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
             >
               Daily Challenge
             </button>
@@ -281,14 +302,18 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
         </div>
       </div>
 
-      {/* Primary Trio Row: Widget 2 Continue Learning + Widget 6 Daily Challenge + Widget 7 Upcoming Exam Countdown */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* Primary Trio Row: Continue Learning (Learn) + Daily Challenge (Practice) + Exam Countdown (Test) */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Widget 2: Continue Learning */}
         <article className="rounded-xl border border-slate-200 bg-white p-5 flex flex-col justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-semibold text-slate-700">Continue Learning</span>
-              <BookOpen className="h-4 w-4 text-slate-400" aria-hidden="true" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold uppercase tracking-wider text-red-700">
+                Learn · Continue
+              </span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-700">
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
+              </span>
             </div>
             <h3 className="font-display text-lg font-bold text-slate-900">
               {data.continueLearning.title}
@@ -304,33 +329,37 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
             <button
               type="button"
               onClick={() => onNavigate(data.continueLearning.route)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800"
+              className="inline-flex min-h-[36px] items-center gap-1 text-xs font-semibold text-red-700 hover:text-red-800"
             >
               Resume <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
         </article>
 
-        {/* Widget 6: Daily Challenge */}
+        {/* Widget 6: Daily Challenge & Streak */}
         <article className="rounded-xl border border-slate-200 bg-white p-5 flex flex-col justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-semibold text-slate-700">Daily Challenge &amp; Streak</span>
-              <Flame className="h-4 w-4 text-amber-600" aria-hidden="true" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold uppercase tracking-wider text-amber-800">
+                Practice · Streak
+              </span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                <Flame className="h-4 w-4" aria-hidden="true" />
+              </span>
             </div>
             <div className="flex items-baseline gap-3">
-              <span className="font-mono text-2xl font-bold text-slate-900 tabular-nums">
+              <span className="font-mono text-3xl font-bold text-slate-900 tabular-nums">
                 {data.dailyChallenge.streakDays}d
               </span>
               <span
                 className={`text-xs font-semibold ${
-                  data.dailyChallenge.doneToday ? 'text-emerald-700' : 'text-amber-700'
+                  data.dailyChallenge.doneToday ? 'text-emerald-700' : 'text-amber-800'
                 }`}
               >
-                {data.dailyChallenge.doneToday ? 'Completed Today' : 'Pending Today'}
+                {data.dailyChallenge.doneToday ? 'Completed Today' : 'Ready Today'}
               </span>
             </div>
-            <p className="text-xs text-slate-600 line-clamp-2">
+            <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
               {data.dailyChallenge.questionOfTheDayPrompt
                 ? `QOTD (${data.dailyChallenge.questionOfTheDaySubject}): ${data.dailyChallenge.questionOfTheDayPrompt}`
                 : 'Daily 5, Subject, Class-wise & Entrance challenge sets ready.'}
@@ -343,7 +372,7 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
             <button
               type="button"
               onClick={() => onNavigate('/practice/daily')}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 hover:text-red-800"
+              className="inline-flex min-h-[36px] items-center gap-1 text-xs font-semibold text-amber-800 hover:text-amber-900"
             >
               Open Practice <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -352,17 +381,22 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
 
         {/* Widget 7: Upcoming Examination Countdown */}
         <article className="rounded-xl border border-slate-200 bg-white p-5 flex flex-col justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-semibold text-slate-700">Upcoming Examination Countdown</span>
-              <CalendarClock className="h-4 w-4 text-blue-700" aria-hidden="true" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold uppercase tracking-wider text-blue-700">
+                Test · Exam Countdown
+              </span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <CalendarClock className="h-4 w-4" aria-hidden="true" />
+              </span>
             </div>
             <h3 className="font-display text-base font-bold text-slate-900">
               {data.upcomingExamCountdown.examTitle}
             </h3>
             {data.upcomingExamCountdown.daysRemaining !== null ? (
-              <p className="font-mono text-2xl font-bold text-blue-700 tabular-nums">
-                {data.upcomingExamCountdown.daysRemaining} days left
+              <p className="font-mono text-3xl font-bold text-blue-700 tabular-nums">
+                {data.upcomingExamCountdown.daysRemaining}d{' '}
+                <span className="text-sm font-semibold text-slate-700">remaining</span>
                 {data.upcomingExamCountdown.targetDate && (
                   <span className="ml-2 text-xs font-normal text-slate-500">
                     ({String(data.upcomingExamCountdown.targetDate).slice(0, 10)})
@@ -370,7 +404,7 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
                 )}
               </p>
             ) : (
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 Set your official SEE, NEB +2, or Entrance exam target date in Study Planner to
                 activate your countdown.
               </p>
@@ -380,9 +414,9 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
             <button
               type="button"
               onClick={() => onNavigate('/dashboard/planner')}
-              className="text-xs font-semibold text-slate-700 hover:text-slate-900"
+              className="min-h-[36px] text-xs font-semibold text-slate-700 hover:text-slate-900"
             >
-              Configure Exam Date
+              Set Exam Date
             </button>
             <button
               type="button"
@@ -393,7 +427,7 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
                     : '/exams',
                 )
               }
-              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800"
+              className="inline-flex min-h-[36px] items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800"
             >
               Take Mock <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -442,7 +476,7 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
               </div>
             </div>
 
-            {/* Weak Topic Detection & Recovery (Section 9.2) */}
+            {/* Weak Topic Detection & Recovery */}
             {data.performanceOverview.weakTopics.length > 0 ? (
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
@@ -453,9 +487,9 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
                   {data.performanceOverview.weakTopics.map((wt) => (
                     <div
                       key={`${wt.subjectName}-${wt.chapterName}-${wt.topicName}`}
-                      className="py-3.5 space-y-2.5"
+                      className="py-4 space-y-3"
                     >
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-bold text-slate-900">
                             {wt.topicName}{' '}
@@ -469,25 +503,35 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
                           {wt.severity === 'critical' ? 'Critical Focus' : 'Needs Practice'}
                         </span>
                       </div>
+
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full ${
+                            wt.severity === 'critical' ? 'bg-red-600' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${Math.max(6, Math.min(100, wt.accuracyPercent))}%` }}
+                        />
+                      </div>
+
                       <div className="flex flex-wrap items-center gap-2 text-xs">
                         <button
                           type="button"
                           onClick={() => onNavigate(wt.recommendations.chapterNotesRoute)}
-                          className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-800 hover:bg-slate-200"
+                          className="min-h-[38px] rounded-md bg-slate-100 px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-200"
                         >
                           Chapter Notes
                         </button>
                         <button
                           type="button"
                           onClick={() => onNavigate(wt.recommendations.targetedPracticeRoute)}
-                          className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-800 hover:bg-slate-200"
+                          className="min-h-[38px] rounded-md bg-slate-100 px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-200"
                         >
                           Targeted Practice
                         </button>
                         <button
                           type="button"
                           onClick={() => onNavigate(wt.recommendations.miniTestRoute)}
-                          className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-800 hover:bg-slate-200"
+                          className="min-h-[38px] rounded-md bg-slate-100 px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-200"
                         >
                           Mini-Test
                         </button>
@@ -498,14 +542,14 @@ export function StudentDashboardView({ onNavigate, onOpenAuth }: StudentDashboar
                               wt.recommendations.chapterNotesRoute.replace('tab=notes', 'tab=revision'),
                             )
                           }
-                          className="rounded-md bg-slate-100 px-2.5 py-1 font-medium text-slate-800 hover:bg-slate-200"
+                          className="min-h-[38px] rounded-md bg-slate-100 px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-200"
                         >
                           Revision Sheet
                         </button>
                         <button
                           type="button"
                           onClick={() => onNavigate(wt.recommendations.retestRoute)}
-                          className="rounded-md bg-red-700 px-2.5 py-1 font-semibold text-white hover:bg-red-800"
+                          className="min-h-[38px] rounded-md bg-red-700 px-3 py-1.5 font-semibold text-white hover:bg-red-800"
                         >
                           Retest Mock
                         </button>

@@ -452,12 +452,12 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               {!user ? (
                 <button
                   type="button"
                   onClick={onOpenAuth}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-red-800"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-red-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-red-800"
                 >
                   <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                   Sign In to Start Timed Exam
@@ -467,7 +467,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                   type="button"
                   disabled={starting || attemptsExhausted}
                   onClick={() => void handleStartExam(false)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-red-800 disabled:opacity-50"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-red-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-red-800 disabled:opacity-50"
                 >
                   <Clock className="h-4 w-4" aria-hidden="true" />
                   {starting
@@ -484,7 +484,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                 <button
                   type="button"
                   onClick={() => onNavigate(`/exams/${exam.slug}/result`)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   <BarChart3 className="h-4 w-4" aria-hidden="true" />
                   View Past Results ({recentResults.length})
@@ -621,10 +621,10 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <div
               aria-live="polite"
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold tabular-nums ${
+              className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold tabular-nums ${
                 timerLow
                   ? 'border-red-300 bg-red-50 text-red-800'
                   : 'border-slate-200 bg-slate-50 text-slate-900'
@@ -653,7 +653,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
               type="button"
               onClick={() => setPaletteOpen((v) => !v)}
               aria-expanded={paletteOpen}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               {paletteOpen ? (
                 <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
@@ -666,7 +666,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
             <button
               type="button"
               onClick={() => setConfirmModalOpen(true)}
-              className="rounded-lg bg-red-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-red-800"
+              className="min-h-[40px] rounded-lg bg-red-700 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-800"
             >
               Submit Exam
             </button>
@@ -774,7 +774,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                           activeState.isMarkedForReview,
                         )
                       }
-                      className={`flex w-full items-start gap-3 rounded-lg border p-3.5 text-left text-sm transition-colors ${
+                      className={`flex min-h-[48px] w-full items-start gap-3 rounded-lg border p-3.5 text-left text-sm transition-colors ${
                         selected
                           ? 'border-blue-700 bg-blue-50/70 text-slate-900'
                           : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50'
@@ -820,7 +820,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                           activeState.isMarkedForReview,
                         );
                       }}
-                      className={`flex w-full items-start gap-3 rounded-lg border p-3.5 text-left text-sm transition-colors ${
+                      className={`flex min-h-[48px] w-full items-start gap-3 rounded-lg border p-3.5 text-left text-sm transition-colors ${
                         checked
                           ? 'border-blue-700 bg-blue-50/70 text-slate-900'
                           : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -861,7 +861,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                           activeState.isMarkedForReview,
                         )
                       }
-                      className={`rounded-lg border p-4 text-sm font-semibold transition-colors ${
+                      className={`min-h-[48px] rounded-lg border p-4 text-sm font-semibold transition-colors ${
                         selected
                           ? 'border-blue-700 bg-blue-50 text-blue-900'
                           : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -973,7 +973,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
             )}
 
             {/* Footer Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+            <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -984,7 +984,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                       !activeState.isMarkedForReview,
                     )
                   }
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                  className={`inline-flex min-h-[42px] items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold transition-colors ${
                     activeState.isMarkedForReview
                       ? 'border-amber-400 bg-amber-50 text-amber-900'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -997,18 +997,18 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                 <button
                   type="button"
                   onClick={() => updateQuestionAnswer(activeQ, null, false)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  className="min-h-[42px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
                 >
                   Clear Response
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   disabled={currentIndex === 0}
                   onClick={() => navigateToQuestion(currentIndex - 1)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                  className="inline-flex min-h-[42px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   Previous
@@ -1017,7 +1017,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                   <button
                     type="button"
                     onClick={() => navigateToQuestion(currentIndex + 1)}
-                    className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    className="inline-flex min-h-[42px] items-center gap-1 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                   >
                     Next
                     <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1026,7 +1026,7 @@ export function ExamRunnerView({ examId, onNavigate, onOpenAuth }: ExamRunnerVie
                   <button
                     type="button"
                     onClick={() => setConfirmModalOpen(true)}
-                    className="inline-flex items-center gap-1 rounded-lg bg-red-700 px-3.5 py-2 text-xs font-semibold text-white hover:bg-red-800"
+                    className="inline-flex min-h-[42px] items-center gap-1 rounded-lg bg-red-700 px-4 py-2 text-xs font-semibold text-white hover:bg-red-800"
                   >
                     Finish &amp; Submit
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

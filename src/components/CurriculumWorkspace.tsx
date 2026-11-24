@@ -1,15 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ArrowRight,
   BookOpen,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   Clock,
+  Compass,
+  Flame,
   Globe,
   Plus,
+  RotateCcw,
   Search,
   ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
+import {
+  LEARNING_PILLARS,
+  NEPAL_QUICK_TRACKS,
+  type PillarId,
+} from '../lib/pillars.ts';
 import type {
   ChapterNode,
   CurriculumHierarchyResponse,
@@ -21,10 +31,19 @@ import type {
 } from '../types/api.ts';
 
 interface CurriculumWorkspaceProps {
+  onNavigate?: (path: string) => void;
   onOpenAuth: () => void;
 }
 
-export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
+function getPillarIcon(id: PillarId) {
+  if (id === 'learn') return BookOpen;
+  if (id === 'practice') return Flame;
+  if (id === 'test') return ClipboardCheck;
+  if (id === 'improve') return RotateCcw;
+  return Compass;
+}
+
+export function CurriculumWorkspace({ onNavigate, onOpenAuth }: CurriculumWorkspaceProps) {
   const { user, apiFetch } = useAuth();
   const [countryIso, setCountryIso] = useState('NP');
   const [data, setData] = useState<CurriculumHierarchyResponse | null>(null);
@@ -205,24 +224,156 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
 
   const canWriteCurriculum = user?.permissions.includes('curriculum:write') ?? false;
   const canReviewCurriculum = user?.permissions.includes('curriculum:review') ?? false;
+  const goTo = (path: string) => {
+    if (onNavigate) onNavigate(path);
+  };
 
   return (
-    <section aria-labelledby="curriculum-heading" className="space-y-6">
-      {/* Workspace Header & Country Selector */}
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-1.5 max-w-2xl">
-          <p className="text-xs font-medium text-red-700">
-            Nepal-First Country-Aware Curriculum Tree
+    <section aria-labelledby="curriculum-heading" className="space-y-8">
+      {/* Nepal Student Launch Hero + Quick Track Switcher */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-center">
+          <div className="space-y-4 lg:col-span-7">
+            <p className="text-xs font-semibold uppercase tracking-wider text-red-700">
+              Hamro Education · Nepal Digital Learning Platform
+            </p>
+            <h1
+              id="curriculum-heading"
+              className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl text-balance"
+            >
+              Study smarter for SEE, NEB +2, and Nepal’s top Bachelor entrances.
+            </h1>
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
+              Aligned with Nepal CDC &amp; NEB syllabi—combining bilingual English/नेपाली chapter
+              notes, formula sheets, timed mock exams, mistake recovery, and verified college &amp;
+              scholarship guides.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => goTo('/school/class-10')}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-red-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-800 transition-colors"
+              >
+                <span>Open School Notes</span>
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => goTo('/exams')}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
+              >
+                <span>Take Mock Exam</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => (user ? goTo('/dashboard') : onOpenAuth())}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+              >
+                {user ? 'Open My Dashboard' : 'Sign In / Join Free'}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Track Jump Panel */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:col-span-5">
+            {NEPAL_QUICK_TRACKS.map((track) => (
+              <button
+                key={track.id}
+                type="button"
+                onClick={() => goTo(track.route)}
+                className="group flex min-h-[72px] items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-left transition-colors hover:border-red-300 hover:bg-white"
+              >
+                <div className="min-w-0">
+                  <div className="font-display text-sm font-bold text-slate-900 group-hover:text-red-700">
+                    {track.label}
+                  </div>
+                  <div className="mt-0.5 text-xs leading-snug text-slate-600 line-clamp-2">
+                    {track.subtitle}
+                  </div>
+                </div>
+                <ArrowRight
+                  className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-red-700"
+                  aria-hidden="true"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 5-Pillar Learning Journey */}
+      <div className="space-y-3">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-display text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+              Five Pillars of Student Mastery
+            </h2>
+            <p className="text-xs text-slate-600">
+              Jump straight to the study stage you need today—from class concepts to entrance prep.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
+          {LEARNING_PILLARS.map((pillar) => {
+            const Icon = getPillarIcon(pillar.id);
+            return (
+              <button
+                key={pillar.id}
+                type="button"
+                onClick={() => goTo(pillar.route)}
+                className={`group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left transition-colors ${pillar.borderHoverClass}`}
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${pillar.iconBgClass} ${pillar.iconTextClass}`}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <span
+                      className={`text-[11px] font-semibold uppercase tracking-wider ${pillar.accentTextClass}`}
+                    >
+                      {pillar.label}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-base font-bold text-slate-900 leading-snug">
+                    {pillar.headline}
+                  </h3>
+                  <p className="text-xs leading-relaxed text-slate-600">{pillar.description}</p>
+                </div>
+
+                <div
+                  className={`mt-4 inline-flex items-center gap-1.5 text-xs font-semibold ${pillar.accentTextClass}`}
+                >
+                  <span>{pillar.ctaLabel}</span>
+                  <ArrowRight
+                    className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Curriculum Explorer Header & Country Selector */}
+      <div
+        id="curriculum-explorer"
+        className="flex flex-col gap-4 border-t border-b border-slate-200 py-5 lg:flex-row lg:items-end lg:justify-between"
+      >
+        <div className="space-y-1 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Interactive Syllabus Map
           </p>
-          <h1
-            id="curriculum-heading"
-            className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl text-balance"
-          >
-            Nepal National Curriculum Architecture
-          </h1>
+          <h2 className="font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            National Curriculum Architecture
+          </h2>
           <p className="text-sm text-slate-600 leading-relaxed">
-            Explore the 9-tier relational hierarchy from country and medium of instruction down to
-            chapters and verified learning objectives across CDC/NEB and CTEVT tracks.
+            Explore every CDC, NEB, and CTEVT subject from education level and academic stream down
+            to chapters and verified learning objectives.
           </p>
         </div>
 
@@ -248,7 +399,7 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
                     setSelectedStreamId(null);
                     setSelectedSubjectId(null);
                   }}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                  className={`min-h-[38px] px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
                     isSelected
                       ? 'bg-white text-slate-900 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
@@ -377,7 +528,7 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
                   setSelectedStreamId(null);
                   setSelectedSubjectId(null);
                 }}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-700 focus:bg-white focus:outline-none"
+                className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-blue-700 focus:bg-white focus:outline-none"
               >
                 {data?.curricula.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -409,7 +560,7 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
                           setSelectedStreamId(null);
                           setSelectedSubjectId(null);
                         }}
-                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
+                        className={`flex min-h-[44px] sm:min-h-[38px] w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
                           isSelected
                             ? 'bg-slate-900 text-white'
                             : 'text-slate-700 hover:bg-slate-100'
@@ -440,7 +591,7 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
                           setSelectedStreamId(null);
                           setSelectedSubjectId(null);
                         }}
-                        className={`rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                        className={`min-h-[40px] sm:min-h-[34px] rounded-md border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
                           isSelected
                             ? 'border-red-700 bg-red-50 text-red-900'
                             : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -458,7 +609,7 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
             {activeGrade && (
               <div className="space-y-2 border-t border-slate-100 pt-4">
                 <p className="text-xs font-semibold text-slate-700">04. Academic Stream</p>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {activeGrade.streams.map((stream) => {
                     const isSelected = activeStream?.id === stream.id;
                     return (
@@ -469,7 +620,7 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
                           setSelectedStreamId(stream.id);
                           setSelectedSubjectId(null);
                         }}
-                        className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                        className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-left transition-colors ${
                           isSelected
                             ? 'border-blue-700 bg-blue-50/70 text-blue-950'
                             : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -500,7 +651,7 @@ export function CurriculumWorkspace({ onOpenAuth }: CurriculumWorkspaceProps) {
                         key={subj.id}
                         type="button"
                         onClick={() => setSelectedSubjectId(subj.id)}
-                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors ${
+                        className={`flex min-h-[44px] sm:min-h-[38px] w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors ${
                           isSelected
                             ? 'bg-slate-100 font-semibold text-slate-900'
                             : 'text-slate-700 hover:bg-slate-50'

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   Award,
   BookMarked,
@@ -42,6 +43,15 @@ export function StudentSubNav({
   unresolvedMistakes,
   dueFlashcards,
 }: StudentSubNavProps) {
+  const activeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const el = activeButtonRef.current;
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'auto' });
+    }
+  }, [active]);
+
   return (
     <nav
       aria-label="Student learning workspace sections"
@@ -60,10 +70,11 @@ export function StudentSubNav({
         return (
           <button
             key={item.id}
+            ref={isActive ? activeButtonRef : undefined}
             type="button"
             onClick={() => onNavigate(item.path)}
             aria-current={isActive ? 'page' : undefined}
-            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+            className={`inline-flex min-h-[44px] sm:min-h-[38px] items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
               isActive
                 ? 'bg-slate-900 text-white'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'

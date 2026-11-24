@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { AiStudyAssistantDrawer } from './AiStudyAssistantDrawer.tsx';
+import { StudentSubNav } from './StudentSubNav.tsx';
 import type {
   MistakeBookItem,
   MistakesSummaryResponse,
@@ -154,9 +155,13 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
   if (!user) {
     return (
       <section className="space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-5">
+        <StudentSubNav active="mistakes" onNavigate={onNavigate} />
+
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-medium text-red-700">Section 9.1 · Automatic Mistake Recovery</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+              Improve · Automatic Mistake Recovery
+            </p>
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-slate-900">
               Personal Mistake Book
             </h1>
@@ -168,14 +173,14 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 self-start sm:self-auto"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             Dashboard
           </button>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 text-center space-y-4">
           <BookOpen className="mx-auto h-8 w-8 text-slate-400" aria-hidden="true" />
           <div className="space-y-1">
             <h2 className="font-display text-lg font-bold text-slate-900">
@@ -189,7 +194,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
           <button
             type="button"
             onClick={onOpenAuth}
-            className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+            className="min-h-[44px] rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
           >
             Sign In to Open Mistake Book
           </button>
@@ -205,17 +210,17 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
 
   return (
     <section aria-labelledby="mistakes-heading" className="space-y-6">
+      <StudentSubNav
+        active="mistakes"
+        onNavigate={onNavigate}
+        unresolvedMistakes={unresolved}
+      />
+
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <button
-            type="button"
-            onClick={() => onNavigate('/dashboard')}
-            className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            Back to Student Dashboard
-          </button>
-          <p className="text-xs font-medium text-red-700">Section 9.1 · Automatic Mistake Pipeline</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+            Improve · Automatic Mistake Recovery
+          </p>
           <h1
             id="mistakes-heading"
             className="mt-1 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
@@ -232,14 +237,14 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
           <button
             type="button"
             onClick={() => onNavigate('/practice/daily')}
-            className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+            className="min-h-[40px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
           >
             Daily Challenge
           </button>
           <button
             type="button"
             onClick={() => onNavigate('/exams')}
-            className="rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
+            className="min-h-[40px] rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
           >
             Mock Exam Center
           </button>
@@ -281,7 +286,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
               key={st}
               type="button"
               onClick={() => setStatusFilter(st)}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
+              className={`min-h-[38px] rounded-md px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors ${
                 statusFilter === st
                   ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -408,7 +413,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
                     </h2>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                     <span
                       className={`inline-flex items-center gap-1 text-xs font-semibold ${
                         isResolved ? 'text-emerald-700' : 'text-red-700'
@@ -424,7 +429,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
                     <button
                       type="button"
                       onClick={() => setAiMistakeItem(item)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 whitespace-nowrap"
+                      className="inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 whitespace-nowrap"
                     >
                       <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                       AI Explain
@@ -434,7 +439,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
                       onClick={() =>
                         isReattempting ? setActiveMistakeId(null) : startReattempt(item)
                       }
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
+                      className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
                     >
                       <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                       {isReattempting ? 'Close Reattempt' : 'Reattempt'}
@@ -498,7 +503,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
                               onClick={() =>
                                 setDraftAnswer({ optionKeys: [opt.optionKey] })
                               }
-                              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                              className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3.5 py-2.5 text-left text-xs transition-colors ${
                                 selected
                                   ? 'border-slate-900 bg-slate-900 text-white font-semibold'
                                   : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -529,7 +534,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
                                   : [...current, opt.optionKey];
                                 setDraftAnswer({ optionKeys: next });
                               }}
-                              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                              className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3.5 py-2.5 text-left text-xs transition-colors ${
                                 selected
                                   ? 'border-slate-900 bg-slate-900 text-white font-semibold'
                                   : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -554,7 +559,7 @@ export function MistakeBookView({ onNavigate, onOpenAuth }: MistakeBookViewProps
                               key={String(val)}
                               type="button"
                               onClick={() => setDraftAnswer({ booleanValue: val })}
-                              className={`rounded-lg border px-4 py-2 text-xs font-semibold ${
+                              className={`min-h-[44px] rounded-lg border px-5 py-2 text-xs font-semibold ${
                                 selected
                                   ? 'border-slate-900 bg-slate-900 text-white'
                                   : 'border-slate-200 bg-white text-slate-800'

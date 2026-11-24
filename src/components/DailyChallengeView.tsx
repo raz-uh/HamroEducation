@@ -11,6 +11,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
+import { StudentSubNav } from './StudentSubNav.tsx';
 import type {
   DailyChallengeResponse,
   DailyChallengeSubmitResponse,
@@ -96,7 +97,7 @@ function QuestionInputBlock({
             />
           </div>
         )}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {options.map((opt) => {
             const selected = value?.optionKeys?.[0] === opt.optionKey;
             return (
@@ -104,7 +105,7 @@ function QuestionInputBlock({
                 key={opt.optionKey}
                 type="button"
                 onClick={() => onChange({ optionKeys: [opt.optionKey] })}
-                className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-left text-xs transition-colors ${
+                className={`flex min-h-[44px] items-start gap-2.5 rounded-lg border px-4 py-3 text-left text-xs transition-colors ${
                   selected
                     ? 'border-slate-900 bg-slate-900 text-white font-semibold'
                     : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -123,7 +124,7 @@ function QuestionInputBlock({
   if (questionType === 'multiple_mcq') {
     const selectedKeys = value?.optionKeys ?? [];
     return (
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {options.map((opt) => {
           const checked = selectedKeys.includes(opt.optionKey);
           return (
@@ -136,7 +137,7 @@ function QuestionInputBlock({
                   : [...selectedKeys, opt.optionKey];
                 onChange({ optionKeys: next });
               }}
-              className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-left text-xs transition-colors ${
+              className={`flex min-h-[44px] items-start gap-2.5 rounded-lg border px-4 py-3 text-left text-xs transition-colors ${
                 checked
                   ? 'border-slate-900 bg-slate-900 text-white font-semibold'
                   : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -163,7 +164,7 @@ function QuestionInputBlock({
               key={String(val)}
               type="button"
               onClick={() => onChange({ booleanValue: val })}
-              className={`rounded-lg border px-4 py-2 text-xs font-semibold transition-colors ${
+              className={`min-h-[44px] rounded-lg border px-5 py-2 text-xs font-semibold transition-colors ${
                 selected
                   ? 'border-slate-900 bg-slate-900 text-white'
                   : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
@@ -420,11 +421,16 @@ export function DailyChallengeView({
 
   return (
     <section aria-labelledby="daily-practice-heading" className="space-y-6">
+      <StudentSubNav
+        active={section === 'leaderboards' || section === 'achievements' ? 'leaderboard' : 'daily'}
+        onNavigate={onNavigate}
+      />
+
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-medium text-red-700">
-            Sections 9.3, 9.4 &amp; 9.5 · Practice Streaks &amp; Recognition
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-800">
+            Practice Streaks &amp; Recognition
           </p>
           <h1
             id="daily-practice-heading"
@@ -442,14 +448,14 @@ export function DailyChallengeView({
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
-            className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+            className="min-h-[40px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
           >
             Student Dashboard
           </button>
           <button
             type="button"
             onClick={() => onNavigate('/dashboard/mistakes')}
-            className="rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
+            className="min-h-[40px] rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 whitespace-nowrap"
           >
             Mistake Book
           </button>
@@ -462,7 +468,7 @@ export function DailyChallengeView({
           <button
             type="button"
             onClick={() => setSection('challenges')}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
+            className={`min-h-[38px] rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
               section === 'challenges'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -473,7 +479,7 @@ export function DailyChallengeView({
           <button
             type="button"
             onClick={() => setSection('leaderboards')}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
+            className={`min-h-[38px] rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
               section === 'leaderboards'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -484,7 +490,7 @@ export function DailyChallengeView({
           <button
             type="button"
             onClick={() => setSection('achievements')}
-            className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
+            className={`min-h-[38px] rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap ${
               section === 'achievements'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1065,7 +1071,7 @@ export function DailyChallengeView({
           <div className="rounded-xl border border-slate-200 bg-white p-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-display text-lg font-bold text-slate-900">
-                Section 9.4 · Automatic Student Achievements
+                Automatic Student Achievements
               </h2>
               <p className="text-xs text-slate-600">
                 Badges unlock automatically as you complete tests, sustain streaks, resolve mistakes,

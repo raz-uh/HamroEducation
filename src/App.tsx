@@ -140,9 +140,12 @@ function WorkspaceShell() {
         onOpenAuth={() => setAuthModalOpen(true)}
       />
 
-      <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-[1320px] flex-1 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-8">
         {route.kind === 'home' && route.tab === 'curriculum' && (
-          <CurriculumWorkspace onOpenAuth={() => setAuthModalOpen(true)} />
+          <CurriculumWorkspace
+            onNavigate={navigate}
+            onOpenAuth={() => setAuthModalOpen(true)}
+          />
         )}
         {route.kind === 'home' && route.tab === 'rbac' && (
           <RbacGovernanceView onOpenAuth={() => setAuthModalOpen(true)} />
@@ -270,9 +273,9 @@ function WorkspaceShell() {
       </main>
 
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1320px] flex-col gap-2 px-6 py-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <span>Hamro Education · Nepal-first Digital Learning Ecosystem</span>
-          <span>Country-Aware PostgreSQL Schema &amp; Server-Side RBAC</span>
+        <div className="mx-auto flex max-w-[1320px] flex-col gap-2 px-4 py-5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <span>Hamro Education · Nepal-First Digital Learning Ecosystem</span>
+          <span>SEE (Class 10) · NEB (+2) · Bachelor Entrances</span>
         </div>
       </footer>
 
