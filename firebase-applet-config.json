@@ -3,6 +3,7 @@
   "appId": "1:345929338363:web:eb947bbec9ae90cf95cf5e",
   "apiKey": "AIzaSyAMdx7HC_9IRj1DIFpEhoKCpKEA1Xi77hg",
   "authDomain": "concise-messenger-4zp2g.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-hamroeducation-d65e9014-fe5c-4b40-b5cc-64bca5176222",
   "storageBucket": "concise-messenger-4zp2g.firebasestorage.app",
   "messagingSenderId": "345929338363",
   "measurementId": "",
